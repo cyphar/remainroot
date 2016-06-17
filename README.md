@@ -69,3 +69,36 @@ stacked on top of each other, this is a more complete solution than
 `LD_PRELOAD`. In addition, it solves some problems with `fork` and
 `execve` that are not really possible to entirely solve with
 `LD_PRELOAD`.
+
+### License ###
+
+`remainroot` is licensed under the GNU GPLv3 or later.
+
+```
+remainroot: a shim to trick code to run in a rootless container
+Copyright (C) 2016 Aleksa Sarai <asarai@suse.de>
+
+remainroot is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+remainroot is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with remainroot.  If not, see <http://www.gnu.org/licenses/>.
+```
+
+My view on the licensing of the shared library used by `LD_PRELOAD` is
+that using a debugging facility that your program does not directly
+depend on (doesn't actually dynamically link to) is the "standard use"
+of this particular library (that's what it was designed to do after
+all). However, **this is not a binding agreement** and **should not be
+interpreted to be any additional permissions to the above license**.
+`remainroot` is licensed under the **verbatim** license text as
+referenced above, with no additional permissions or exceptions. Please
+consult with a lawyer or email me for clarification or permission before
+deciding to potentially infringe on the license.

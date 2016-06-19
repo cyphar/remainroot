@@ -18,25 +18,29 @@
 CC=gcc
 LIBRARY=libremain.so
 
-HEADERS=$(wildcard src/*.h)
-SOURCES=$(wildcard src/*.c)
-OBJECTS=$(SOURCES:.c=.o)
+# All headers.
+HEADERS=$(wildcard src/*.h) $(wildcard src/*/*.h)
 
+# Core code.
+CSOURCES=$(wildcard src/core/*.c)
+COBJECTS=$(CSOURCES:.c=.o)
+
+# libremain.so code.
 LSOURCES=$(wildcard src/preload/*.c)
 LOBJECTS=$(LSOURCES:.c=.o)
 
 .PHONY: all clean
 
-all: $(SOURCES) $(LIBRARY)
+all: $(LIBRARY)
 
 clean:
 	@echo " [CLEAN] ."
-	@rm -f $(OBJECTS) $(LOBJECTS) $(LIBRARY)
+	@rm -f $(COBJECTS) $(LOBJECTS) $(LIBRARY)
 
 %.o: %.c $(HEADERS)
 	@echo "    [CC] $<"
-	@$(CC) -shared -fPIC $(CFLAGS) -c $< -o $@
+	@$(CC) -shared -fPIC -Isrc/ $(CFLAGS) -c $< -o $@
 
-$(LIBRARY): $(OBJECTS) $(LOBJECTS)
+$(LIBRARY): $(COBJECTS) $(LOBJECTS)
 	@echo "  [LINK] $@"
-	@$(CC) -shared $(OBJECTS) $(LOBJECTS) -o $@
+	@$(CC) -fPIC -shared -Wl,-soname,$@ $(COBJECTS) $(LOBJECTS) -o $@

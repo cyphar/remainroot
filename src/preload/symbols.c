@@ -17,7 +17,7 @@
  */
 
 /* To get the prototypes. */
-#include "../cred.h"
+#include "core/cred.h"
 
 /* Automatically generates all of the relevant shims. */
 #define SYSCALL0(type, func) \
@@ -37,4 +37,4 @@
 #define LIBCALL0(type, func) SYSCALL0(type, func)
 #define LIBCALL1(type, func, type0, arg0) SYSCALL1(type, func, type0, arg0)
 
-#include "../cred.h"
+#include "core/cred.h"

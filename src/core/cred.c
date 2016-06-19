@@ -19,8 +19,19 @@
 /*
  * cred.c defines the shims for all of the credential-related functions.
  * The shims are of the form __rr_do_<syscall>, so they'll show up in
- * backtraces and debugging logs. Look at preload/ to see where the
- * actual libc functions are being overridden.
+ * backtraces and debugging logs. Look at preload-symbols.c to see where
+ * the actual libc functions are being overridden.
+ *
+ * Note that this whole concept doesn't account for some incredibly
+ * tricky ways that a process could find its current user id. For
+ * example, a process could mmap(/proc/self/status) and then parse the
+ * memory to figure out what its {uid, gid} are. A process could also
+ * just open that file. Or create a file and then stat it in order to
+ * figure out what user it is. Currently we don't fix this (because it
+ * would be _incredibly_ hard and would require tracking so many more
+ * things than the current {uid, gid}).
+ *
+ * TODO: Is it even possible to handle all of those cases?
  */
 
 #define _GNU_SOURCE
@@ -30,6 +41,9 @@
 #include <limits.h>
 #include <sys/types.h>
 #include <syscall.h>
+
+/* Verify that we don't break the default prototypes. */
+#include "cred.h"
 
 /*
  * Okay, so it turns out that glibc implements a POSIX-compatible thread

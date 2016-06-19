@@ -18,8 +18,6 @@
 
 /* Main wrapper for core/, preload/ and ptrace/ */
 
-extern char *__progname;
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -29,21 +27,8 @@ extern char *__progname;
 
 /* All of the boilerplate text. */
 #include "info.h"
-
-#define die(...) \
-	do { fprintf(stderr, __VA_ARGS__); exit(1); } while(0)
-
-#define rtfm(...) \
-	do { fprintf(stderr, __VA_ARGS__); usage(); exit(1); } while(0)
-
-enum shim_t {
-	PRELOAD,
-	PTRACE,
-};
-
-struct config_t {
-	enum shim_t shim;
-};
+#include "common.h"
+#include "shims.h"
 
 void usage(void)
 {
@@ -54,6 +39,15 @@ void license(void)
 {
 	fprintf(stderr, REMAINROOT_LICENSE);
 }
+
+enum shim_t {
+	PRELOAD,
+	PTRACE,
+};
+
+struct config_t {
+	enum shim_t shim;
+};
 
 void bake_args(struct config_t *config, int argc, char **argv)
 {
@@ -81,7 +75,7 @@ void bake_args(struct config_t *config, int argc, char **argv)
 				else if(!strcmp(optarg, "preload"))
 					config->shim = PRELOAD;
 				else
-					rtfm("%s: invalid shim type: %s\n", __progname, optarg);
+					rtfm("invalid shim type: %s", optarg);
 				break;
 			case 'L':
 				license();
@@ -98,7 +92,7 @@ void bake_args(struct config_t *config, int argc, char **argv)
 	}
 
 	if (!found_shim)
-		rtfm("%s: shim type required\n", __progname);
+		rtfm("shim type required");
 }
 
 int main(int argc, char **argv)
@@ -112,13 +106,13 @@ int main(int argc, char **argv)
 
 	switch (config.shim) {
 		case PRELOAD:
-			die("%s: currently not supported\n", __progname);
+			shim_preload(argc, argv);
 			break;
 		case PTRACE:
-			die("%s: currently not supported\n", __progname);
+			die("currently not supported");
 			break;
 		default:
-			rtfm("%s: shim type required\n", __progname);
+			rtfm("shim type required");
 			break;
 	}
 

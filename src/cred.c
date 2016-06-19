@@ -329,3 +329,61 @@ gid_t __rr_do_getegid(void)
 {
 	return current_egid;
 }
+
+/*
+ * It is always invalid to call setgroups(2) in a recent Linux kernel
+ * version rootless container.
+ */
+
+/*
+ * TODO: We need to initialise this with a filtered version of
+ *       getgroups(2). Filtering essentially means that we remove every
+ *       overflow uid and gid.
+ */
+
+static int current_ngids = 0;
+static gid_t current_gids[NGROUPS_MAX] = {0};
+
+int __rr_do_setgroups(int size, const gid_t *list)
+{
+	if (size <= 0 || size > NGROUPS_MAX)
+		goto error_value;
+
+	if (!current_cap_setgid)
+		goto error_perm;
+
+	for (int i = 0; i < size; i++)
+		current_gids[i] = list[i];
+
+	errno = ENOSYS;
+	return -1;
+
+error_value:
+	errno = EINVAL;
+	return -1;
+
+error_perm:
+	errno = EPERM;
+	return -1;
+}
+
+int __rr_do_getgroups(int size, gid_t *list)
+{
+	if (size == 0)
+		goto exit;
+
+	if (size < current_ngids || size > NGROUPS_MAX)
+		goto error;
+
+	for (int i = 0; i < current_ngids; i++)
+		list[i] = current_gids[i];
+
+	/* fallthrough */
+
+exit:
+	return current_ngids;
+
+error:
+	errno = EINVAL;
+	return -1;
+}

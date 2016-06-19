@@ -70,6 +70,10 @@ SYSCALL3(int, getresgid, gid_t *, rgid, gid_t *, egid, gid_t *, sgid);
 LIBCALL1(int, setegid, gid_t, egid);
 LIBCALL0(gid_t, getegid);
 
+/* Shims for supplementary gids. */
+SYSCALL2(int, setgroups, int, size, const gid_t *, list);
+SYSCALL2(int, getgroups, int, size, gid_t *, list);
+
 /* Clean up automatic syscall definition. */
 #if defined(AUTO_SYSCALL)
 #	undef AUTO_SYSCALL

@@ -17,9 +17,14 @@
 
 CC=gcc
 LIBRARY=libremain.so
+WRAPPER=remainroot
 
 # All headers.
 HEADERS=$(wildcard src/*.h) $(wildcard src/*/*.h)
+
+# Wrapper code.
+WSOURCES=$(wildcard src/*.c)
+WOBJECTS=$(WSOURCES:.c=.o)
 
 # Core code.
 CSOURCES=$(wildcard src/core/*.c)
@@ -31,16 +36,22 @@ LOBJECTS=$(LSOURCES:.c=.o)
 
 .PHONY: all clean
 
-all: $(LIBRARY)
+all: $(LIBRARY) $(WRAPPER)
 
 clean:
 	@echo " [CLEAN] ."
-	@rm -f $(COBJECTS) $(LOBJECTS) $(LIBRARY)
+	@rm -f $(COBJECTS)
+	@rm -f $(WOBJECTS) $(WRAPPER)
+	@rm -f $(LOBJECTS) $(LIBRARY)
 
 %.o: %.c $(HEADERS)
 	@echo "    [CC] $<"
-	@$(CC) -shared -fPIC -Isrc/ $(CFLAGS) -c $< -o $@
+	@$(CC) -fPIC -Isrc/ $(CFLAGS) -c $< -o $@
 
 $(LIBRARY): $(COBJECTS) $(LOBJECTS)
 	@echo "  [LINK] $@"
 	@$(CC) -fPIC -shared -Wl,-soname,$@ $(COBJECTS) $(LOBJECTS) -o $@
+
+$(WRAPPER): $(COBJECTS) $(WOBJECTS)
+	@echo "  [LINK] $@"
+	@$(CC) -fPIC $(WOBJECTS) -o $@

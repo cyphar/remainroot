@@ -18,7 +18,6 @@
 
 /* preload.c is the front-end for the LD_PRELOAD shim. */
 
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -55,16 +54,16 @@ int make_library(void)
 	/* I have no words to describe how dumb this API is. */
 	int fd = syscall(SYS_memfd_create, "memfd_create(2) is a bad API", MFD_ALLOW_SEALING);
 	if (fd < 0)
-		die("memfd_create failed: %s", strerror(errno));
+		die("memfd_create failed: %m");
 
 	/* Write the library code. */
 	ssize_t n = write(fd, libremain_so, libremain_so_len);
 	if (n != libremain_so_len)
-		die("write failed: %s", strerror(errno));
+		die("write failed: %m");
 
 	/* We now seal the file descriptor to stop bad things. */
 	if (fcntl(fd, F_ADD_SEALS, F_SEAL_SHRINK|F_SEAL_GROW|F_SEAL_WRITE|F_SEAL_SEAL) < 0)
-		die("fcntl failed: could not seal: %s", strerror(errno));
+		die("fcntl failed: could not seal: %m");
 
 	return fd;
 }
@@ -90,7 +89,7 @@ void shim_preload(int argc, char **argv)
 	snprintf(env, ENV_SIZE, "LD_PRELOAD=/proc/self/fd/%d", fd);
 
 	if (putenv(env) < 0)
-		die("couldn't set %s: %s", env, strerror(errno));
+		die("couldn't set %s: %m", env);
 
 	execvp(argv[0], argv);
 

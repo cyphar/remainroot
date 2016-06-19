@@ -31,7 +31,7 @@ CSOURCES=$(wildcard src/core/*.c)
 COBJECTS=$(CSOURCES:.c=.o)
 
 # libremain.so code.
-LSOURCES=$(wildcard src/preload/*.c)
+LSOURCES=$(wildcard src/libremain/*.c)
 LOBJECTS=$(LSOURCES:.c=.o)
 
 # The LD_PRELOAD shim will compile the libremain.so file into itself.

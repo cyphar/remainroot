@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <sys/types.h>
+#include <syscall.h>
 
 /*
  * Okay, so it turns out that glibc implements a POSIX-compatible thread
@@ -386,4 +387,24 @@ exit:
 error:
 	errno = EINVAL;
 	return -1;
+}
+
+/* TODO: Actually get this from /proc/sys/kernel/overflowgid */
+#define OVERFLOW_GID 65534
+
+/* This sets up current_gids. */
+void __rr_init_cred(void)
+{
+	gid_t gids[NGROUPS_MAX] = {0};
+	current_ngids = 0;
+
+	/* If this fails, we can't do anything about it. */
+	int len = syscall(SYS_getgroups, NGROUPS_MAX, gids);
+	if (len < 0)
+		return;
+
+	for (int i = 0; i < len; i++) {
+		if (gids[i] != OVERFLOW_GID)
+			current_gids[current_ngids++] = gids[i];
+	}
 }

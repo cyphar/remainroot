@@ -389,10 +389,11 @@ error:
 	return -1;
 }
 
-/* TODO: Actually get this from /proc/sys/kernel/overflowgid */
+/* TODO: Actually get this from /proc/sys/kernel/overflowgid. */
 #define OVERFLOW_GID 65534
 
 /* This sets up current_gids. */
+void __rr_init_cred(void) __attribute__((constructor));
 void __rr_init_cred(void)
 {
 	gid_t gids[NGROUPS_MAX] = {0};

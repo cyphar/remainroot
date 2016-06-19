@@ -1,3 +1,4 @@
 remainroot
 *.so
+*.so.c
 *.o

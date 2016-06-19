@@ -34,6 +34,10 @@ COBJECTS=$(CSOURCES:.c=.o)
 LSOURCES=$(wildcard src/preload/*.c)
 LOBJECTS=$(LSOURCES:.c=.o)
 
+# The LD_PRELOAD shim will compile the libremain.so file into itself.
+PSOURCE=src/libremain.so.c
+POBJECT=$(PSOURCE:.c=.o)
+
 .PHONY: all clean
 
 all: $(LIBRARY) $(WRAPPER)
@@ -43,6 +47,7 @@ clean:
 	@rm -f $(COBJECTS)
 	@rm -f $(WOBJECTS) $(WRAPPER)
 	@rm -f $(LOBJECTS) $(LIBRARY)
+	@rm -f $(PSOURCE) $(POBJECT)
 
 %.o: %.c $(HEADERS)
 	@echo "    [CC] $<"
@@ -52,6 +57,10 @@ $(LIBRARY): $(COBJECTS) $(LOBJECTS)
 	@echo "  [LINK] $@"
 	@$(CC) -fPIC -shared -Wl,-soname,$@ $(COBJECTS) $(LOBJECTS) -o $@
 
-$(WRAPPER): $(COBJECTS) $(WOBJECTS)
+$(PSOURCE): $(LIBRARY)
+	@echo "   [GEN] $@"
+	@xxd -i $(LIBRARY) $@
+
+$(WRAPPER): $(COBJECTS) $(WOBJECTS) $(POBJECT)
 	@echo "  [LINK] $@"
-	@$(CC) -fPIC $(WOBJECTS) -o $@
+	@$(CC) -fPIC $(WOBJECTS) $(POBJECT) -o $@

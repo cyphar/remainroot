@@ -23,32 +23,8 @@
 #	define REMAINROOT_CRED_H
 #endif /* !defined(REMAINROOT_CRED_H) */
 
-/*
- * If we were included without SYSCALL definitions, then we default to
- * generating the prototype of the __rr_do_<syscall> shims. The reason
- * that LIBCALL and SYSCALL are separate is so that our different shim
- * methods can differentiate between libc and syscall functions.
- */
-
-#if !defined(SYSCALL0)
-#define AUTO_SYSCALL
-#define SYSCALL0(type, func) \
-	type __rr_do_ ## func(void)
-#define SYSCALL1(type, func, type0, arg0) \
-	type __rr_do_ ## func(type0 arg0)
-#define SYSCALL2(type, func, type0, arg0, type1, arg1) \
-	type __rr_do_ ## func(type0 arg0, type1 arg1)
-#define SYSCALL3(type, func, type0, arg0, type1, arg1, type2, arg2) \
-	type __rr_do_ ## func(type0 arg0, type1 arg1, type2 arg2)
-#endif /* !defined(SYSCALL0) */
-
-#if !defined(LIBCALL0)
-#define AUTO_LIBCALL
-#define LIBCALL0(type, func) \
-	type __rr_do_ ## func(void)
-#define LIBCALL1(type, func, type0, arg0) \
-	type __rr_do_ ## func(type0 arg0)
-#endif /* !defined(LIBCALL0) */
+/* SYSCALL and LIBCALL definitions. */
+#include "syscalls-def.h"
 
 /* Shims for uid-based syscalls. */
 SYSCALL1(int, setuid, uid_t, uid);
@@ -74,20 +50,7 @@ LIBCALL0(gid_t, getegid);
 SYSCALL2(int, setgroups, int, size, const gid_t *, list);
 SYSCALL2(int, getgroups, int, size, gid_t *, list);
 
-/* Clean up automatic syscall definition. */
-#if defined(AUTO_SYSCALL)
-#	undef AUTO_SYSCALL
-#	undef SYSCALL0
-#	undef SYSCALL1
-#	undef SYSCALL2
-#	undef SYSCALL3
-#endif
-
-/* Clean up automatic libcall definition. */
-#if defined(AUTO_LIBCALL)
-#	undef AUTO_LIBCALL
-#	undef LIBCALL0
-#	undef LIBCALL1
-#endif
+/* Clean up. */
+#include "syscalls-undef.h"
 
 #endif /* !defined(REMAINROOT_CRED_H) || defined(SYSCALL) || defined(LIBCALL) */

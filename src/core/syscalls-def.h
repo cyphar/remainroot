@@ -16,34 +16,33 @@
  * along with remainroot.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* To get the prototypes. */
-#include "core/cred.h"
+/*
+ * If we were included without SYSCALL definitions, then we default to
+ * generating the prototype of the __rr_do_<syscall> shims. The reason
+ * that LIBCALL and SYSCALL are separate is so that our different shim
+ * methods can differentiate between libc and syscall functions.
+ */
 
-/* Automatically generates all of the relevant shims. */
+#if !defined(SYSCALL0)
+#define AUTO_SYSCALL
 #define SYSCALL0(type, func) \
-	type func(void) \
-	{ return __rr_do_ ## func(); }
+	type __rr_do_ ## func(void)
 #define SYSCALL1(type, func, type0, arg0) \
-	type func(type0 arg0) \
-	{ return __rr_do_ ## func(arg0); }
+	type __rr_do_ ## func(type0 arg0)
 #define SYSCALL2(type, func, type0, arg0, type1, arg1) \
-	type func(type0 arg0, type1 arg1) \
-	{ return __rr_do_ ## func(arg0, arg1); }
+	type __rr_do_ ## func(type0 arg0, type1 arg1)
 #define SYSCALL3(type, func, type0, arg0, type1, arg1, type2, arg2) \
-	type func(type0 arg0, type1 arg1, type2 arg2) \
-	{ return __rr_do_ ## func(arg0, arg1, arg2); }
+	type __rr_do_ ## func(type0 arg0, type1 arg1, type2 arg2)
 #define SYSCALL4(type, func, type0, arg0, type1, arg1, type2, arg2, type3, arg3) \
-	type func(type0 arg0, type1 arg1, type2 arg2, type3 arg3) \
-	{ return __rr_do_ ## func(arg0, arg1, arg2, arg3); }
+	type __rr_do_ ## func(type0 arg0, type1 arg1, type2 arg2, type3 arg3)
 #define SYSCALL5(type, func, type0, arg0, type1, arg1, type2, arg2, type3, arg3, type4, arg4) \
-	type func(type0 arg0, type1 arg1, type2 arg2, type3 arg3, type4 arg4) \
-	{ return __rr_do_ ## func(arg0, arg1, arg2, arg3, arg4); }
+	type __rr_do_ ## func(type0 arg0, type1 arg1, type2 arg2, type3 arg3, type4 arg4)
 #define SYSCALL6(type, func, type0, arg0, type1, arg1, type2, arg2, type3, arg3, type4, arg4, type5, arg5) \
-	type func(type0 arg0, type1 arg1, type2 arg2, type3 arg3, type4 arg4, type5 arg5) \
-	{ return __rr_do_ ## func(arg0, arg1, arg2, arg3, arg4, arg5); }
+	type __rr_do_ ## func(type0 arg0, type1 arg1, type2 arg2, type3 arg3, type4 arg4, type5 arg5)
+#endif /* !defined(SYSCALL0) */
 
-/* On the libc layer, LIBCALL == SYSCALL. */
+#if !defined(LIBCALL0)
+#define AUTO_LIBCALL
 #define LIBCALL0(type, func) SYSCALL0(type, func)
 #define LIBCALL1(type, func, type0, arg0) SYSCALL1(type, func, type0, arg0)
-
-#include "core/cred.h"
+#endif /* !defined(LIBCALL0) */

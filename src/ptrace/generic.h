@@ -30,5 +30,7 @@ uintptr_t ptrace_argument(pid_t pid, int arg);
 int ptrace_return(pid_t pid, uintptr_t ret);
 
 /* TODO: Generic API to modify pointer arguments. */
+uintptr_t ptrace_deref_data(pid_t pid, uintptr_t addr);
+int ptrace_assign_data(pid_t pid, uintptr_t addr, uintptr_t value);
 
 #endif

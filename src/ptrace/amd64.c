@@ -63,3 +63,13 @@ int ptrace_return(pid_t pid, uintptr_t ret)
 {
 	return ptrace(PTRACE_POKEUSER, pid, sizeof(long) * RAX, ret);
 }
+
+uintptr_t ptrace_deref_data(pid_t pid, uintptr_t addr)
+{
+	return ptrace(PTRACE_PEEKDATA, pid, addr, NULL);
+}
+
+int ptrace_assign_data(pid_t pid, uintptr_t addr, uintptr_t value)
+{
+	return ptrace(PTRACE_POKEDATA, pid, addr, value);
+}

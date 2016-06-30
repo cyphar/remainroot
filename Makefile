@@ -40,7 +40,7 @@ POBJECT=$(PSOURCE:.c=.o)
 
 # The ptrace shim requires architecture-specific code.
 # TODO: Fix that.
-TSOURCES=src/ptrace/x86_64.c
+TSOURCES=$(wildcard src/ptrace/*.c)
 TOBJECTS=$(TSOURCES:.c=.o)
 
 .PHONY: all clean
@@ -69,4 +69,4 @@ $(PSOURCE): $(LIBRARY)
 
 $(WRAPPER): $(COBJECTS) $(WOBJECTS) $(POBJECT) $(TOBJECTS)
 	@echo "  [LINK] $@"
-	@$(CC) -fPIC $(WOBJECTS) $(POBJECT) $(TOBJECTS) -o $@
+	@$(CC) -fPIC $(COBJECTS) $(WOBJECTS) $(POBJECT) $(TOBJECTS) -o $@

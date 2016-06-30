@@ -32,6 +32,7 @@
 
 #include "common.h"
 #include "ptrace/generic.h"
+#include "ptrace/generic-shims.h"
 
 static void tracee(int argc, char **argv)
 {
@@ -74,8 +75,7 @@ static int trace_syscall(pid_t pid)
 
 /* TODO: Deal with the case where TRACESYSGOOD isn't defined. */
 #define TRACE_FLAGS (PTRACE_O_EXITKILL | PTRACE_O_TRACECLONE | \
-                     PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK | \
-                     PTRACE_O_TRACESYSGOOD)
+		PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK | PTRACE_O_TRACESYSGOOD)
 
 static void tracer(pid_t pid)
 {
@@ -97,36 +97,57 @@ static void tracer(pid_t pid)
 		if (trace_syscall(pid))
 			break;
 
-		/* XXX: This is currently not used. */
-		/* Get event information for the trace event. */
-		/*
-		unsigned long event_data;
-		if (ptrace(PTRACE_GETEVENTMSG, pid, NULL, &event_data) < 0)
-			die("ptrace(geteventmsg) failed: %m");
-		*/
-
-		long number = ptrace_syscall_number(pid);
+		long number = ptrace_syscall(pid);
 		if (number < 0)
 			die("ptrace_syscall_number failed: %m");
 
-		printf("syscall(%ld)\n", number);
-
-		/* TODO: Implement all of this. */
 		/*
-		int event_type = (status >> 8) & ~SIGTRAP;
-		switch (event_type & ~0xFF) {
-			case 0:
+		 * TODO: Get event information for fork() syscalls, and implement all
+		 *       of the code that deals with multiple processes. I'm still not
+		 *       sure about whether or not we should deal with it by forking a
+		 *       new tracer or not.
+		 */
+
+		bool need_replace = true;
+		uintptr_t ret = 0;
+
+		/*
+		 * Calculates and modifies all of the relevant state.
+		 * XXX: This should probably after <--syscall(), so that we can
+		 * completely ignore what the kernel decided.
+		 *
+		 * Also, this code is ugly.
+		 */
+		switch (number) {
+#define SYSCALL(func) \
+			case SYS_ ## func: \
+				if (ptrace_rr_ ## func(pid, &ret) < 0) \
+					die("ptrace_syscall_%s failed: %m\n", "" # func); \
 				break;
-			case PTRACE_EVENT_FORK << 8:
-			case PTRACE_EVENT_CLONE << 8:
-			case PTRACE_EVENT_VFORK << 8:
-				die("{fork,clone,vfork} not implemented");
+#define SYSCALL0(type, func, ...) SYSCALL(func)
+#define SYSCALL1(type, func, ...) SYSCALL(func)
+#define SYSCALL2(type, func, ...) SYSCALL(func)
+#define SYSCALL3(type, func, ...) SYSCALL(func)
+#define SYSCALL4(type, func, ...) SYSCALL(func)
+#define SYSCALL5(type, func, ...) SYSCALL(func)
+#define SYSCALL6(type, func, ...) SYSCALL(func)
+#define LIBCALL0(...)
+#define LIBCALL1 LIBCALL0
+#include "core/cred.h"
+#undef SYSCALL0
+#undef SYSCALL1
+#undef SYSCALL2
+#undef SYSCALL3
+#undef SYSCALL4
+#undef SYSCALL5
+#undef SYSCALL6
+#undef LIBCALL0
+#undef LIBCALL1
 				break;
 			default:
-				die("unknown event: %d", event_type);
+				need_replace = false;
 				break;
 		}
-		*/
 
 		/* <-- syscall() */
 		if (trace_syscall(pid)) {
@@ -135,6 +156,14 @@ static void tracer(pid_t pid)
 				break;
 			die("trace_syscall failed: process died inside syscall\n");
 		}
+
+		/*
+		 * Replace syscall return value. We have to do this after
+		 * ret-from-syscall. XXX: There should be some logic to deal
+		 * with errors reported from the kernel.
+		 */
+		if (need_replace && ptrace_return(pid, ret) < 0)
+			die("ptrace_return(%d): %m", ret);
 	}
 
 	exit(0);

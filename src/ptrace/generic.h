@@ -22,7 +22,13 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-long ptrace_syscall_number(pid_t pid);
-uintptr_t ptrace_syscall_argument(pid_t pid, int arg);
+/* Gets the syscall number. */
+long ptrace_syscall(pid_t pid);
+
+/* Deal with syscall arguments and return values. */
+uintptr_t ptrace_argument(pid_t pid, int arg);
+int ptrace_return(pid_t pid, uintptr_t ret);
+
+/* TODO: Generic API to modify pointer arguments. */
 
 #endif

@@ -16,19 +16,50 @@
  * along with remainroot.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* ptrace/x86_64.c is the register-specific magic for amd64. */
+/* ptrace/amd64.c is the register-specific magic for amd64. */
 
+#include <stdio.h>
 #include <sys/ptrace.h>
 #include <sys/reg.h>
 
+#include "core/cred.h"
 #include "generic.h"
+#include "generic-shims.h"
 
-long ptrace_syscall_number(pid_t pid)
+long ptrace_syscall(pid_t pid)
 {
 	return ptrace(PTRACE_PEEKUSER, pid, sizeof(long)*ORIG_RAX);
 }
 
-uintptr_t ptrace_syscall_argument(pid_t pid, int arg)
+uintptr_t ptrace_argument(pid_t pid, int arg)
 {
-	return 0;
+	int reg = 0;
+	switch (arg) {
+		/* %rdi, %rsi, %rdx, %rcx, %r8 and %r9 */
+		case 0:
+			reg = RDI;
+			break;
+		case 1:
+			reg = RSI;
+			break;
+		case 2:
+			reg = RDX;
+			break;
+		case 3:
+			reg = R10;
+			break;
+		case 4:
+			reg = R8;
+			break;
+		case 5:
+			reg = R9;
+			break;
+	}
+
+	return ptrace(PTRACE_PEEKUSER, pid, sizeof(long) * reg, NULL);
+}
+
+int ptrace_return(pid_t pid, uintptr_t ret)
+{
+	return ptrace(PTRACE_POKEUSER, pid, sizeof(long) * RAX, ret);
 }

@@ -109,7 +109,7 @@ int main(int argc, char **argv)
 			shim_preload(argc, argv);
 			break;
 		case PTRACE:
-			die("currently not supported");
+			shim_ptrace(argc, argv);
 			break;
 		default:
 			rtfm("shim type required");

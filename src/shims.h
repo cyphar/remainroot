@@ -19,6 +19,7 @@
 #if !defined(REMAINROOT_SHIMS_H)
 #define REMAINROOT_SHIMS_H
 
+void shim_ptrace(int argc, char **argv);
 void shim_preload(int argc, char **argv);
 
 #endif

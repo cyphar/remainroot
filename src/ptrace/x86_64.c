@@ -16,37 +16,19 @@
  * along with remainroot.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#if !defined(REMAINROOT_COMMON_H)
-#define REMAINROOT_COMMON_H
+/* ptrace/x86_64.c is the register-specific magic for amd64. */
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <sys/ptrace.h>
+#include <sys/reg.h>
 
-extern char *__progname;
+#include "generic.h"
 
-/* Error messages. */
-#define warn(...) \
-	do { \
-		fprintf(stderr, "[W:%s] ", __progname); \
-		fprintf(stderr, __VA_ARGS__); \
-		fprintf(stderr, "\n"); \
-	} while(0)
+long ptrace_syscall_number(pid_t pid)
+{
+	return ptrace(PTRACE_PEEKUSER, pid, sizeof(long)*ORIG_RAX);
+}
 
-#define die(...) \
-	do { \
-		fprintf(stderr, "[E:%s] ", __progname); \
-		fprintf(stderr, __VA_ARGS__); \
-		fprintf(stderr, "\n"); \
-		exit(1); \
-	} while(0)
-
-#define rtfm(...) \
-	do { \
-		fprintf(stderr, "%s: ", __progname); \
-		fprintf(stderr, __VA_ARGS__); \
-		fprintf(stderr, "\n"); \
-		usage(); \
-		exit(1); \
-	} while(0)
-
-#endif /* !defined(REMAINROOT_COMMON_H) */
+uintptr_t ptrace_syscall_argument(pid_t pid, int arg)
+{
+	return 0;
+}

@@ -38,6 +38,11 @@ LOBJECTS=$(LSOURCES:.c=.o)
 PSOURCE=src/libremain.so.c
 POBJECT=$(PSOURCE:.c=.o)
 
+# The ptrace shim requires architecture-specific code.
+# TODO: Fix that.
+TSOURCES=src/ptrace/x86_64.c
+TOBJECTS=$(TSOURCES:.c=.o)
+
 .PHONY: all clean
 
 all: $(LIBRARY) $(WRAPPER)
@@ -48,6 +53,7 @@ clean:
 	@rm -f $(WOBJECTS) $(WRAPPER)
 	@rm -f $(LOBJECTS) $(LIBRARY)
 	@rm -f $(PSOURCE) $(POBJECT)
+	@rm -f $(TOBJECTS)
 
 %.o: %.c $(HEADERS)
 	@echo "    [CC] $<"
@@ -61,6 +67,6 @@ $(PSOURCE): $(LIBRARY)
 	@echo "   [GEN] $@"
 	@xxd -i $(LIBRARY) $@
 
-$(WRAPPER): $(COBJECTS) $(WOBJECTS) $(POBJECT)
+$(WRAPPER): $(COBJECTS) $(WOBJECTS) $(POBJECT) $(TOBJECTS)
 	@echo "  [LINK] $@"
-	@$(CC) -fPIC $(WOBJECTS) $(POBJECT) -o $@
+	@$(CC) -fPIC $(WOBJECTS) $(POBJECT) $(TOBJECTS) -o $@

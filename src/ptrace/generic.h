@@ -16,37 +16,13 @@
  * along with remainroot.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#if !defined(REMAINROOT_COMMON_H)
-#define REMAINROOT_COMMON_H
+#if !defined(PTRACE_GENERIC_H)
+#define PTRACE_GENERIC_H
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <stdint.h>
+#include <sys/types.h>
 
-extern char *__progname;
+long ptrace_syscall_number(pid_t pid);
+uintptr_t ptrace_syscall_argument(pid_t pid, int arg);
 
-/* Error messages. */
-#define warn(...) \
-	do { \
-		fprintf(stderr, "[W:%s] ", __progname); \
-		fprintf(stderr, __VA_ARGS__); \
-		fprintf(stderr, "\n"); \
-	} while(0)
-
-#define die(...) \
-	do { \
-		fprintf(stderr, "[E:%s] ", __progname); \
-		fprintf(stderr, __VA_ARGS__); \
-		fprintf(stderr, "\n"); \
-		exit(1); \
-	} while(0)
-
-#define rtfm(...) \
-	do { \
-		fprintf(stderr, "%s: ", __progname); \
-		fprintf(stderr, __VA_ARGS__); \
-		fprintf(stderr, "\n"); \
-		usage(); \
-		exit(1); \
-	} while(0)
-
-#endif /* !defined(REMAINROOT_COMMON_H) */
+#endif

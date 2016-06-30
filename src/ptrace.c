@@ -24,9 +24,11 @@
 #include <signal.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <errno.h>
 #include <sys/ptrace.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/syscall.h>
 
 #include "common.h"
 #include "ptrace/generic.h"
@@ -52,13 +54,16 @@ static int trace_syscall(pid_t pid)
 	int status;
 	while (true) {
 		/* Keep retracing the program until we hit a syscall. */
-		if (ptrace(PTRACE_SYSCALL, pid, 0, 0) < 0)
+		if (ptrace(PTRACE_SYSCALL, pid, 0, 0) < 0) {
+			if (errno == ESRCH)
+				return 1;
 			die("ptrace(syscall) failed: %m");
+		}
 		if (waitpid(pid, &status, 0) < 0)
 			die("waitpid failed: %m");
 
 		if (WIFEXITED(status))
-			return -status;
+			return 1;
 
 		/* We're in a syscall. */
 		/* TODO: Deal with children. */
@@ -89,7 +94,7 @@ static void tracer(pid_t pid)
 	 */
 	while (true) {
 		/* --> syscall() */
-		if (trace_syscall(pid) < 0)
+		if (trace_syscall(pid))
 			break;
 
 		/* XXX: This is currently not used. */
@@ -124,8 +129,12 @@ static void tracer(pid_t pid)
 		*/
 
 		/* <-- syscall() */
-		if (trace_syscall(pid) < 0)
+		if (trace_syscall(pid)) {
+			/* The user called the exit syscall. */
+			if (number == SYS_exit || number == SYS_exit_group)
+				break;
 			die("trace_syscall failed: process died inside syscall\n");
+		}
 	}
 
 	exit(0);

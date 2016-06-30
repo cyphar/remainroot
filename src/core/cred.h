@@ -34,7 +34,7 @@ SYSCALL2(int, setreuid, uid_t, ruid, uid_t, euid);
 SYSCALL3(int, setresuid, uid_t, ruid, uid_t, euid, uid_t, suid);
 SYSCALL3(int, getresuid, uid_t *, ruid, uid_t *, euid, uid_t *, suid);
 LIBCALL1(int, seteuid, uid_t, euid);
-LIBCALL0(uid_t, geteuid);
+SYSCALL0(uid_t, geteuid);
 
 /* Shims for gid-based syscalls. */
 SYSCALL1(int, setgid, gid_t, gid);
@@ -44,7 +44,7 @@ SYSCALL2(int, setregid, gid_t, rgid, gid_t, egid);
 SYSCALL3(int, setresgid, gid_t, rgid, gid_t, egid, gid_t, sgid);
 SYSCALL3(int, getresgid, gid_t *, rgid, gid_t *, egid, gid_t *, sgid);
 LIBCALL1(int, setegid, gid_t, egid);
-LIBCALL0(gid_t, getegid);
+SYSCALL0(gid_t, getegid);
 
 /* Shims for supplementary gids. */
 SYSCALL2(int, setgroups, int, size, const gid_t *, list);

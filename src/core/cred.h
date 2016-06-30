@@ -27,28 +27,28 @@
 #include "syscalls-def.h"
 
 /* Shims for uid-based syscalls. */
-SYSCALL1(int, setuid, uid_t, uid);
-SYSCALL0(uid_t, getuid);
-SYSCALL1(int, setfsuid, uid_t, fsuid);
-SYSCALL2(int, setreuid, uid_t, ruid, uid_t, euid);
-SYSCALL3(int, setresuid, uid_t, ruid, uid_t, euid, uid_t, suid);
-SYSCALL3(int, getresuid, uid_t *, ruid, uid_t *, euid, uid_t *, suid);
-LIBCALL1(int, seteuid, uid_t, euid);
-SYSCALL0(uid_t, geteuid);
+SYSCALL1(int, setuid, uid_t, uid)
+SYSCALL0(uid_t, getuid)
+SYSCALL1(int, setfsuid, uid_t, fsuid)
+SYSCALL2(int, setreuid, uid_t, ruid, uid_t, euid)
+SYSCALL3(int, setresuid, uid_t, ruid, uid_t, euid, uid_t, suid)
+SYSCALL3(int, getresuid, uid_t *, ruid, uid_t *, euid, uid_t *, suid)
+LIBCALL1(int, seteuid, uid_t, euid)
+SYSCALL0(uid_t, geteuid)
 
 /* Shims for gid-based syscalls. */
-SYSCALL1(int, setgid, gid_t, gid);
-SYSCALL0(gid_t, getgid);
-SYSCALL1(int, setfsgid, gid_t, fsgid);
-SYSCALL2(int, setregid, gid_t, rgid, gid_t, egid);
-SYSCALL3(int, setresgid, gid_t, rgid, gid_t, egid, gid_t, sgid);
-SYSCALL3(int, getresgid, gid_t *, rgid, gid_t *, egid, gid_t *, sgid);
-LIBCALL1(int, setegid, gid_t, egid);
-SYSCALL0(gid_t, getegid);
+SYSCALL1(int, setgid, gid_t, gid)
+SYSCALL0(gid_t, getgid)
+SYSCALL1(int, setfsgid, gid_t, fsgid)
+SYSCALL2(int, setregid, gid_t, rgid, gid_t, egid)
+SYSCALL3(int, setresgid, gid_t, rgid, gid_t, egid, gid_t, sgid)
+SYSCALL3(int, getresgid, gid_t *, rgid, gid_t *, egid, gid_t *, sgid)
+LIBCALL1(int, setegid, gid_t, egid)
+SYSCALL0(gid_t, getegid)
 
 /* Shims for supplementary gids. */
-SYSCALL2(int, setgroups, int, size, const gid_t *, list);
-SYSCALL2(int, getgroups, int, size, gid_t *, list);
+SYSCALL2(int, setgroups, int, size, const gid_t *, list)
+SYSCALL2(int, getgroups, int, size, gid_t *, list)
 
 /* Clean up. */
 #include "syscalls-undef.h"

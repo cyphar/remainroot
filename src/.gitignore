@@ -1,0 +1,12 @@
+# Automake.
+*.la
+*.lo
+*.so.c
+config.h
+config.h.in
+.deps
+.libs
+Makefile
+Makefile.in
+stamp-h1
+*/.dirstamp

@@ -19,8 +19,10 @@
 #if !defined(REMAINROOT_INFO_H)
 #define REMAINROOT_INFO_H
 
+#include "config-wrap.h"
+
 #define REMAINROOT_USAGE \
-"usage: %s --shim-type <shim> <program> [<argument> ...]\n" \
+"usage: " PACKAGE " --shim-type <shim> <program> [<argument> ...]\n" \
 "\n" \
 "A collection of shims to allow unmodified programs to run nicely inside\n" \
 "rootless containers. In particular, this wrapper will use several\n" \
@@ -41,20 +43,20 @@
 "to be fooled by this program.\n"
 
 #define REMAINROOT_LICENSE \
-"remainroot: a shim to trick code to run in a rootless container\n" \
+PACKAGE ": a shim to trick code to run in a rootless container\n" \
 "Copyright (C) 2016 Aleksa Sarai <asarai@suse.de>\n" \
 "\n" \
-"remainroot is free software: you can redistribute it and/or modify\n" \
+PACKAGE " is free software: you can redistribute it and/or modify\n" \
 "it under the terms of the GNU General Public License as published by\n" \
 "the Free Software Foundation, either version 3 of the License, or\n" \
 "(at your option) any later version.\n" \
 "\n" \
-"remainroot is distributed in the hope that it will be useful,\n" \
+PACKAGE " is distributed in the hope that it will be useful,\n" \
 "but WITHOUT ANY WARRANTY; without even the implied warranty of\n" \
 "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n" \
 "GNU General Public License for more details.\n" \
 "\n" \
 "You should have received a copy of the GNU General Public License\n" \
-"along with remainroot.  If not, see <http://www.gnu.org/licenses/>.\n"
+"along with " PACKAGE ".  If not, see <http://www.gnu.org/licenses/>.\n"
 
 #endif /* !define(REMAINROOT_INFO_H) */

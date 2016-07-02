@@ -30,6 +30,7 @@
 #include <sys/wait.h>
 #include <sys/syscall.h>
 
+#include "config-wrap.h"
 #include "common.h"
 #include "ptrace/generic.h"
 #include "ptrace/generic-shims.h"
@@ -50,12 +51,12 @@ static void tracee(int argc, char **argv)
 	die("tracee start failed: %m");
 }
 
-static int trace_syscall(pid_t pid)
+static int trace_syscall(pid_t pid, int *ret)
 {
 	int status;
+
 	while (true) {
-		/* Keep retracing the program until we hit a syscall. */
-		if (ptrace(PTRACE_SYSCALL, pid, 0, 0) < 0) {
+		if (ptrace(PTRACE_SYSCALL, pid, NULL, NULL) < 0) {
 			if (errno == ESRCH)
 				return 1;
 			die("ptrace(syscall) failed: %m");
@@ -63,19 +64,26 @@ static int trace_syscall(pid_t pid)
 		if (waitpid(pid, &status, 0) < 0)
 			die("waitpid failed: %m");
 
+		if (ret)
+			*ret = status;
+
 		if (WIFEXITED(status))
 			return 1;
 
 		/* We're in a syscall. */
-		/* TODO: Deal with children. */
 		if (WIFSTOPPED(status) && WSTOPSIG(status) & 0x80)
+			return 0;
+
+		/* We just hit a fork. */
+		if (((status >> 8) & SIGTRAP) == SIGTRAP && (status >> 8) != SIGTRAP)
 			return 0;
 	}
 }
 
 /* TODO: Deal with the case where TRACESYSGOOD isn't defined. */
 #define TRACE_FLAGS (PTRACE_O_EXITKILL | PTRACE_O_TRACECLONE | \
-		PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK | PTRACE_O_TRACESYSGOOD)
+	                 PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK | \
+	                 PTRACE_O_TRACESYSGOOD)
 
 static void tracer(pid_t pid)
 {
@@ -84,6 +92,10 @@ static void tracer(pid_t pid)
 	/* Wait for child to be ready for us to attach. */
 	if (waitpid(pid, &status, 0) < 0)
 		die("waitpid failed: %m");
+	if (!WIFSTOPPED(status) || WSTOPSIG(status) != SIGSTOP) {
+		kill(pid, SIGKILL);
+		die("tracer: unexpected wait status: %x", status);
+	}
 	if (ptrace(PTRACE_SETOPTIONS, pid, 0, TRACE_FLAGS) < 0)
 		die("ptrace(setoptions) failed: %m");
 
@@ -93,21 +105,17 @@ static void tracer(pid_t pid)
 	 * doesn't tell us what syscall we are returning from.
 	 */
 	while (true) {
+		int status;
+
 		/* --> syscall() */
-		if (trace_syscall(pid))
+		if (trace_syscall(pid, &status))
 			break;
 
 		long number = ptrace_syscall(pid);
 		if (number < 0)
 			die("ptrace_syscall_number failed: %m");
 
-		/*
-		 * TODO: Get event information for fork() syscalls, and implement all
-		 *       of the code that deals with multiple processes. I'm still not
-		 *       sure about whether or not we should deal with it by forking a
-		 *       new tracer or not.
-		 */
-
+		/* TODO: Remove need_replace. */
 		bool need_replace = true;
 		uintptr_t ret = 0;
 
@@ -150,11 +158,28 @@ static void tracer(pid_t pid)
 		}
 
 		/* <-- syscall() */
-		if (trace_syscall(pid)) {
+		if (trace_syscall(pid, &status)) {
 			/* The user called the exit syscall. */
 			if (number == SYS_exit || number == SYS_exit_group)
 				break;
 			die("trace_syscall failed: process died inside syscall\n");
+		}
+
+		/* See if we just hit a clone. */
+		switch ((status >> 8) & ~SIGTRAP) {
+			case PTRACE_EVENT_CLONE << 8:
+			case PTRACE_EVENT_VFORK << 8:
+			case PTRACE_EVENT_FORK << 8:
+				{
+					pid_t trace_child, child;
+
+					if (ptrace(PTRACE_GETEVENTMSG, pid, NULL, &trace_child) < 0)
+						die("ptrace(getevntmsg): %m");
+
+					printf("child = %d\n", trace_child);
+					pid = trace_child;
+					/* TODO */
+				}
 		}
 
 		/*

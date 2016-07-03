@@ -34,6 +34,28 @@
 #include "common.h"
 #include "ptrace/generic.h"
 #include "ptrace/generic-shims.h"
+#include "ohmic/ohmic.h"
+
+static struct ohm_t *pid_hm;
+
+/*
+ * TODO: Replace this with process context. Due to bad design on my part, ohmic
+ *       doesn't allow you to have NULL values so this is just a placeholder
+ *       until I implement all of the state variable crap.
+ */
+static char nothing = '*';
+
+static void ptrace_init(void) __attribute__((constructor));
+static void ptrace_init(void)
+{
+	/* XXX: Do we need to resize this at any point? */
+	pid_hm = ohm_init(4096, ohm_hash);
+}
+
+static bool still_tracing(void)
+{
+	return ohm_iter_init(pid_hm).key != NULL;
+}
 
 static void tracee(int argc, char **argv)
 {
@@ -51,24 +73,40 @@ static void tracee(int argc, char **argv)
 	die("tracee start failed: %m");
 }
 
-static int trace_syscall(pid_t pid, int *ret)
+static int trace_syscall(pid_t *pid, int *ret)
 {
 	int status;
 
-	while (true) {
-		if (ptrace(PTRACE_SYSCALL, pid, NULL, NULL) < 0) {
+	/* We restart tracing the process that we last hit. */
+	if (*pid) {
+		if (ptrace(PTRACE_SYSCALL, *pid, NULL, NULL) < 0) {
 			if (errno == ESRCH)
-				return 1;
+				ohm_remove(pid_hm, pid, sizeof(pid_t));
 			die("ptrace(syscall) failed: %m");
 		}
-		if (waitpid(pid, &status, 0) < 0)
+	}
+
+	/* Loop until we get a syscall trace. */
+	while (still_tracing()) {
+		/*
+		 * While this isn't _explicitly_ mentioned in the documentation, ptrace
+		 * is implemented such that the tracer is a pseudo-parent of all
+		 * tracees. That means that a process cannot ever become a non-"child"
+		 * process and using waitpid(-1, ...) is totally fine. At least, that's
+		 * what I'm going to tell myself at night.
+		 */
+		*pid = waitpid(-1, &status, 0);
+		if (*pid < 0)
 			die("waitpid failed: %m");
 
 		if (ret)
 			*ret = status;
 
-		if (WIFEXITED(status))
-			return 1;
+		/* Process is dead, remove it from the pool. */
+		if (WIFEXITED(status)) {
+			ohm_remove(pid_hm, pid, sizeof(pid_t));
+			continue;
+		}
 
 		/* We're in a syscall. */
 		if (WIFSTOPPED(status) && WSTOPSIG(status) & 0x80)
@@ -77,7 +115,19 @@ static int trace_syscall(pid_t pid, int *ret)
 		/* We just hit a fork. */
 		if (((status >> 8) & SIGTRAP) == SIGTRAP && (status >> 8) != SIGTRAP)
 			return 0;
+
+		/* Restart tracing, it wasn't the state we wanted. */
+		if (ptrace(PTRACE_SYSCALL, *pid, NULL, NULL) < 0) {
+			if (errno == ESRCH) {
+				ohm_remove(pid_hm, pid, sizeof(pid_t));
+				continue;
+			}
+			die("ptrace(syscall) failed: %m");
+		}
 	}
+
+	/* She's done. */
+	return 1;
 }
 
 /* TODO: Deal with the case where TRACESYSGOOD isn't defined. */
@@ -99,21 +149,25 @@ static void tracer(pid_t pid)
 	if (ptrace(PTRACE_SETOPTIONS, pid, 0, TRACE_FLAGS) < 0)
 		die("ptrace(setoptions) failed: %m");
 
+	/* Add the initial process to the pool. */
+	if (!ohm_insert(pid_hm, &pid, sizeof(pid_t), &nothing, sizeof(nothing)))
+		die("ohm_insert(init-%d) failed", pid);
+
 	/*
 	 * Main tracing loop. We wait until the process is stopped, and then we
 	 * evaluate what to do. Most of the complications result because ptrace(2)
 	 * doesn't tell us what syscall we are returning from.
 	 */
-	while (true) {
+	while (still_tracing()) {
 		int status;
 
 		/* --> syscall() */
-		if (trace_syscall(pid, &status))
+		if (trace_syscall(&pid, &status))
 			break;
 
 		long number = ptrace_syscall(pid);
 		if (number < 0)
-			die("ptrace_syscall_number failed: %m");
+			die("ptrace_syscall(%d) failed: %m", pid);
 
 		/* TODO: Remove need_replace. */
 		bool need_replace = true;
@@ -158,10 +212,17 @@ static void tracer(pid_t pid)
 		}
 
 		/* <-- syscall() */
-		if (trace_syscall(pid, &status)) {
+		/*
+		 * FIXME: I'm 95% sure there's a race condition here if you
+		 *        accidentally hit a syscall entry here.
+		 */
+		if (trace_syscall(&pid, &status)) {
 			/* The user called the exit syscall. */
-			if (number == SYS_exit || number == SYS_exit_group)
-				break;
+			if (number == SYS_exit || number == SYS_exit_group) {
+				ohm_remove(pid_hm, &pid, sizeof(pid_t));
+				pid = 0;
+				continue;
+			}
 			die("trace_syscall failed: process died inside syscall\n");
 		}
 
@@ -171,14 +232,14 @@ static void tracer(pid_t pid)
 			case PTRACE_EVENT_VFORK << 8:
 			case PTRACE_EVENT_FORK << 8:
 				{
-					pid_t trace_child, child;
+					pid_t trace_child;
 
 					if (ptrace(PTRACE_GETEVENTMSG, pid, NULL, &trace_child) < 0)
 						die("ptrace(getevntmsg): %m");
 
-					printf("child = %d\n", trace_child);
-					pid = trace_child;
-					/* TODO */
+					/* #yolo */
+					if (!ohm_insert(pid_hm, &trace_child, sizeof(pid_t), &nothing, sizeof(nothing)))
+						die("ohm_insert(child-%d) failed", trace_child);
 				}
 		}
 

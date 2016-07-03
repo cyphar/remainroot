@@ -17,7 +17,7 @@
 # remainroot
 bin_PROGRAMS = remainroot
 remainroot_SOURCES = remainroot.c core/cred.c
-remainroot_SOURCES += ptrace.c ptrace/generic-shims.c ptrace/amd64.c
+remainroot_SOURCES += ptrace.c ptrace/generic-shims.c ptrace/amd64.c ohmic/ohmic.c
 remainroot_SOURCES += preload.c libremain.so.c
 
 # I'm so sorry.

@@ -21,6 +21,10 @@ remainroot_SOURCES += ptrace.c ptrace/generic-shims.c ptrace/amd64.c
 remainroot_SOURCES += preload.c libremain.so.c
 
 # I'm so sorry.
-libremain.so.c: libremain/symbols.c core/cred.c
-	$(CC) -I$(srcdir)/ -shared -fPIC libremain/symbols.c core/cred.c -o $(tmpdir)/libremain.so
-	$(XXD) -i $(tmpdir)/libremain.so > libremain.so.c
+libremain.so.c: $(srcdir)/libremain/symbols.c $(srcdir)/core/cred.c
+	$(CC) -I$(srcdir)/ -shared -fPIC $< -o $(tmpdir)/libremain.so
+	cd $(tmpdir) && $(XXD) -i libremain.so > $(abs_srcdir)/libremain.so.c
+#endif
+
+clean-local:
+	rm -f $(srcdir)/libremain.so.c

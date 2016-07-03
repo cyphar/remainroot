@@ -19,7 +19,7 @@
 #if !defined(REMAINROOT_INFO_H)
 #define REMAINROOT_INFO_H
 
-#include "config-wrap.h"
+#include "config.h"
 
 #define REMAINROOT_USAGE \
 "usage: " PACKAGE " --shim-type <shim> <program> [<argument> ...]\n" \

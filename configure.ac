@@ -23,6 +23,15 @@ AM_INIT_AUTOMAKE([-Wall foreign subdir-objects])
 AC_CONFIG_SRCDIR([src/info.h])
 AC_CONFIG_HEADERS([src/config.h])
 
+# Fix up ifdef guards.
+AH_TOP([
+#if !defined(CONFIG_H)
+#define CONFIG_H
+])
+AH_BOTTOM([
+#endif /* !defined(CONFIG_H) */
+])
+
 # We need a temporary directory for libremain.so.
 AS_TMPDIR([remainroot-build])
 AC_SUBST([tmpdir], $tmp)

@@ -30,7 +30,7 @@
 #include <sys/wait.h>
 #include <sys/syscall.h>
 
-#include "config-wrap.h"
+#include "config.h"
 #include "common.h"
 #include "ptrace/generic.h"
 #include "ptrace/generic-shims.h"

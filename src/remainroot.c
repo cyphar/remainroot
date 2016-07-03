@@ -40,13 +40,36 @@ void license(void)
 	fprintf(stderr, REMAINROOT_LICENSE);
 }
 
-enum shim_t {
-	PRELOAD,
-	PTRACE,
+struct shim_t {
+	char *name;
+	void (*fn)(int argc, char **argv);
 };
 
+static struct shim_t shims[] = {
+	{
+		.name = "ptrace",
+		.fn = shim_ptrace,
+	},
+	{
+		.name = "preload",
+		.fn = shim_preload,
+	},
+	{0},
+};
+
+struct shim_t *get_shim(char *name)
+{
+	for (struct shim_t *p = shims; p->fn != NULL; p++)
+		if (!strcmp(name, p->name))
+			return p;
+	return NULL;
+}
+
+/* TODO: Make this an autoconf option. */
+#define DEFAULT_SHIM "ptrace"
+
 struct config_t {
-	enum shim_t shim;
+	struct shim_t shim;
 };
 
 void bake_args(struct config_t *config, int argc, char **argv)
@@ -59,21 +82,23 @@ void bake_args(struct config_t *config, int argc, char **argv)
 		{          0,                 0, NULL,   0},
 	};
 
+	/* Parse the default shim. */
+	struct shim_t *shim = get_shim(DEFAULT_SHIM);
+	if (shim)
+		config->shim = *shim;
+
 	/*
 	 * It's critical that we don't parse and of the arguments for the
 	 * child process. Since we're on GNU/Linux, we can use the "+" GNU
 	 * extension. But we could similarly use POSIXLY_CORRECT.
 	 */
 
-	bool found_shim = false;
 	while ((c = getopt_long(argc, argv, "+s:hL", long_options, NULL)) != -1) {
 		switch (c) {
 			case 's':
-				found_shim = true;
-				if (!strcmp(optarg, "ptrace"))
-					config->shim = PTRACE;
-				else if(!strcmp(optarg, "preload"))
-					config->shim = PRELOAD;
+				shim = get_shim(optarg);
+				if (shim)
+					config->shim = *shim;
 				else
 					rtfm("invalid shim type: %s", optarg);
 				break;
@@ -91,30 +116,22 @@ void bake_args(struct config_t *config, int argc, char **argv)
 		}
 	}
 
-	if (!found_shim)
+	if (!config->shim.fn)
 		rtfm("shim type required");
 }
 
 int main(int argc, char **argv)
 {
-	struct config_t config;
+	struct config_t config = {0};
 	bake_args(&config, argc, argv);
 
 	/* Fix up our arguments to point to the slave process arguments. */
 	argv += optind;
 	argc -= optind;
 
-	switch (config.shim) {
-		case PRELOAD:
-			shim_preload(argc, argv);
-			break;
-		case PTRACE:
-			shim_ptrace(argc, argv);
-			break;
-		default:
-			rtfm("shim type required");
-			break;
-	}
+	/* In to the shim we go. */
+	config.shim.fn(argc, argv);
 
-	return 0;
+	/* We should never get here. */
+	return 1;
 }

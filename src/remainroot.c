@@ -50,10 +50,6 @@ static struct shim_t shims[] = {
 		.name = "ptrace",
 		.fn = shim_ptrace,
 	},
-	{
-		.name = "preload",
-		.fn = shim_preload,
-	},
 	{0},
 };
 
@@ -65,7 +61,6 @@ struct shim_t *get_shim(char *name)
 	return NULL;
 }
 
-/* TODO: Make this an autoconf option. */
 #define DEFAULT_SHIM "ptrace"
 
 struct config_t {

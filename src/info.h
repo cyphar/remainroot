@@ -37,7 +37,7 @@
 "  -h, --help              show this help page\n" \
 "  -L, --license           show the license information\n" \
 "  -s, --shim-type <shim>  which shim method to use on the program\n" \
-"                          (valid options are 'preload', 'ptrace')\n" \
+"                          (valid options are 'ptrace')\n" \
 "\n" \
 "The remaining arguments are taken to be the program name and arguments\n" \
 "to be fooled by this program.\n"

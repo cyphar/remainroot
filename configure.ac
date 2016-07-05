@@ -23,6 +23,11 @@ AM_INIT_AUTOMAKE([-Wall foreign subdir-objects])
 AC_CONFIG_SRCDIR([src/info.h])
 AC_CONFIG_HEADERS([src/config.h])
 
+# Define AC_MSG_ERROR.
+m4_define([AC_MSG_ERROR],
+       [{ AS_MESSAGE([error: $1], [2])
+          exit m4_default([$2], [1]); }])
+
 # Fix up ifdef guards.
 AH_TOP([
 #if !defined(CONFIG_H)
@@ -43,24 +48,27 @@ AC_PATH_PROG([XXD], [xxd], [])
 # Checks for libraries.
 
 # Checks for header files.
-AC_CHECK_HEADERS([fcntl.h limits.h stdint.h stdlib.h string.h unistd.h stdbool.h sys/syscall.h])
+AC_CHECK_HEADERS([fcntl.h limits.h stdint.h stdlib.h string.h unistd.h stdbool.h syscall.h sys/syscall.h])
 # ptrace
 AC_CHECK_HEADERS([sys/ptrace.h sys/reg.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
-AC_CHECK_TYPES([uid_t])
-AC_CHECK_TYPES([gid_t])
-AC_CHECK_TYPES([pid_t])
-AC_CHECK_TYPES([ssize_t])
-AC_CHECK_TYPES([uintptr_t])
+AC_TYPE_UID_T
+AC_TYPE_PID_T
+AC_TYPE_SSIZE_T
+AC_TYPE_UINTPTR_T
 
 # Checks for library functions.
 AC_FUNC_FORK
-AC_CHECK_FUNC([putenv], [AC_DEFINE([HAVE_PUTENV], [1], [Define if putenv exists.])])
+
+# We need ptrace.
 AC_CHECK_FUNC([ptrace], [AC_DEFINE([HAVE_PTRACE], [1], [Define if ptrace exists.])])
 
 # Compiler characteristics.
 AC_LANG([C])
+
+# Check that xxd works.
+#AC_COMPILE_IFELSE()
 
 # Checks for system services.
 

@@ -18,32 +18,6 @@ that will confuse some processes by providing seemingly garbage results.
 `remainroot` is designed to shim out all of these calls so that an
 unmodified process can run perfectly fine inside a rootless container.
 
-There are two main techniques by which we can shim out these functions.
-You should consider your usecase when deciding which one to use.
-
-### `LD_PRELOAD` ###
-
-Any GNU/Linux hacker has certainly misused this feature. Essentially the
-`libc` ELF loader (`ld.so`) allows you to specify a set of shared
-libraries that will be loaded into the context of the binary. The
-symbols provided by that library can be used to override weak symbols
-(such as many of the symbols provided by `libc`). This allows us to add
-our shims **on the `libc` layer**.
-
-Because `LD_PRELOAD` operates on a `libc` layer, if a process decides to
-make us raw syscalls, or uses a library that uses raw syscalls then our
-shim won't fire. This obviously can cause problems because then you're
-back at square one. However, most programs will act nicely with
-`LD_PRELOAD`, and this code is much simpler and less hacky than the
-other main mechanism for syscall shims.
-
-It should be noted that because `libc` implements a POSIX API, the shims
-used within the `LD_PRELOAD` technique are specifically written to
-emulate POSIX semantics. The underlying Linux syscalls **do not** obey
-POSIX semantics, so we have to also emulate some of the hacks that
-`glibc` uses to fool processes into thinking that things like
-`setuid(2)` actually obey POSIX on GNU/Linux.
-
 ### `ptrace(2)` ###
 
 `ptrace(2)` is a debugging interface inside the Linux kernel, and is

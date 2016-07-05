@@ -17,30 +17,42 @@
  */
 
 /* To get the prototypes. */
+#include <errno.h>
 #include "core/cred.h"
+
+/* Generic shim body that deals with errno. */
+#define SYSCALL_BODY(type, func, ...) \
+	{ \
+		type ret = __rr_do_ ## func(__VA_ARGS__); \
+		if (ret < 0) { \
+			errno = -ret; \
+			return -1; \
+		} \
+		return ret; \
+	}
 
 /* Automatically generates all of the relevant shims. */
 #define SYSCALL0(type, func) \
 	type func(void) \
-	{ return __rr_do_ ## func(); }
+	SYSCALL_BODY(type, func)
 #define SYSCALL1(type, func, type0, arg0) \
 	type func(type0 arg0) \
-	{ return __rr_do_ ## func(arg0); }
+	SYSCALL_BODY(type, func, arg0)
 #define SYSCALL2(type, func, type0, arg0, type1, arg1) \
 	type func(type0 arg0, type1 arg1) \
-	{ return __rr_do_ ## func(arg0, arg1); }
+	SYSCALL_BODY(type, func, arg0, arg1)
 #define SYSCALL3(type, func, type0, arg0, type1, arg1, type2, arg2) \
 	type func(type0 arg0, type1 arg1, type2 arg2) \
-	{ return __rr_do_ ## func(arg0, arg1, arg2); }
+	SYSCALL_BODY(type, func, arg0, arg1, arg2)
 #define SYSCALL4(type, func, type0, arg0, type1, arg1, type2, arg2, type3, arg3) \
 	type func(type0 arg0, type1 arg1, type2 arg2, type3 arg3) \
-	{ return __rr_do_ ## func(arg0, arg1, arg2, arg3); }
+	SYSCALL_BODY(type, func, arg0, arg1, arg2, arg3)
 #define SYSCALL5(type, func, type0, arg0, type1, arg1, type2, arg2, type3, arg3, type4, arg4) \
 	type func(type0 arg0, type1 arg1, type2 arg2, type3 arg3, type4 arg4) \
-	{ return __rr_do_ ## func(arg0, arg1, arg2, arg3, arg4); }
+	SYSCALL_BODY(type, func, arg0, arg1, arg2, arg3, arg4)
 #define SYSCALL6(type, func, type0, arg0, type1, arg1, type2, arg2, type3, arg3, type4, arg4, type5, arg5) \
 	type func(type0 arg0, type1 arg1, type2 arg2, type3 arg3, type4 arg4, type5 arg5) \
-	{ return __rr_do_ ## func(arg0, arg1, arg2, arg3, arg4, arg5); }
+	SYSCALL_BODY(type, func, arg0, arg1, arg2, arg3, arg4, arg5)
 
 /* On the libc layer, LIBCALL == SYSCALL. */
 #define LIBCALL0(type, func) SYSCALL0(type, func)

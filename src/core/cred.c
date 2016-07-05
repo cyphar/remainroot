@@ -91,8 +91,7 @@ int __rr_do_setuid(uid_t uid)
 	return 0;
 
 error:
-	errno = EPERM;
-	return -1;
+	return -EPERM;
 }
 
 uid_t __rr_do_getuid(void)
@@ -137,8 +136,7 @@ int __rr_do_setreuid(uid_t ruid, uid_t euid)
 	return 0;
 
 error:
-	errno = EPERM;
-	return -1;
+	return -EPERM;
 }
 
 /* There is no getreuid(2). */
@@ -165,15 +163,14 @@ int __rr_do_setresuid(uid_t ruid, uid_t euid, uid_t suid)
 	return 0;
 
 error:
-	errno = EPERM;
-	return -1;
+	return -EPERM;
 }
 
 int __rr_do_getresuid(uid_t *ruid, uid_t *euid, uid_t *suid)
 {
 	/* This is so we can get EFAULT without segfaulting. */
 	if (getresuid(ruid, euid, suid) < 0)
-		return -1;
+		return -errno;
 
 	*ruid = current_uid;
 	*euid = current_euid;
@@ -194,8 +191,7 @@ int __rr_do_seteuid(uid_t euid)
 	return __rr_do_setreuid(-1, euid);
 
 error:
-	errno = EPERM;
-	return -1;
+	return -EPERM;
 }
 
 uid_t __rr_do_geteuid(void)
@@ -233,8 +229,7 @@ int __rr_do_setgid(gid_t gid)
 	return 0;
 
 error:
-	errno = EPERM;
-	return -1;
+	return -EPERM;
 }
 
 gid_t __rr_do_getgid(void)
@@ -279,8 +274,7 @@ int __rr_do_setregid(gid_t rgid, gid_t egid)
 	return 0;
 
 error:
-	errno = EPERM;
-	return -1;
+	return -EPERM;
 }
 
 /* There is no getregid(2). */
@@ -307,15 +301,14 @@ int __rr_do_setresgid(gid_t rgid, gid_t egid, gid_t sgid)
 	return 0;
 
 error:
-	errno = EPERM;
-	return -1;
+	return -EPERM;
 }
 
 int __rr_do_getresgid(gid_t *rgid, gid_t *egid, gid_t *sgid)
 {
 	/* This is so we can get EFAULT without segfaulting. */
 	if (getresgid(rgid, egid, sgid) < 0)
-		return -1;
+		return -errno;
 
 	*rgid = current_gid;
 	*egid = current_egid;
@@ -336,8 +329,7 @@ int __rr_do_setegid(gid_t egid)
 	return __rr_do_setregid(-1, egid);
 
 error:
-	errno = EPERM;
-	return -1;
+	return -EPERM;
 }
 
 gid_t __rr_do_getegid(void)
@@ -370,16 +362,13 @@ int __rr_do_setgroups(int size, const gid_t *list)
 	for (int i = 0; i < size; i++)
 		current_gids[i] = list[i];
 
-	errno = ENOSYS;
-	return -1;
+	return 0;
 
 error_value:
-	errno = EINVAL;
-	return -1;
+	return -EINVAL;
 
 error_perm:
-	errno = EPERM;
-	return -1;
+	return -EPERM;
 }
 
 int __rr_do_getgroups(int size, gid_t *list)
@@ -399,8 +388,7 @@ exit:
 	return current_ngids;
 
 error:
-	errno = EINVAL;
-	return -1;
+	return -EINVAL;
 }
 
 /* TODO: Actually get this from /proc/sys/kernel/overflowgid. */

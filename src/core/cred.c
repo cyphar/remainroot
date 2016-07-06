@@ -444,6 +444,7 @@ int __rr_do_setgroups(struct cred_t *current, int size, const gid_t *list)
 	for (int i = 0; i < size; i++)
 		new.groups[i] = list[i];
 
+	new.ngroups = size;
 	cred_clone(current, &new);
 	return 0;
 

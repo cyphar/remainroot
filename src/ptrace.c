@@ -52,6 +52,12 @@ static void ptrace_init(void)
 	pid_hm = ohm_init(4096, ohm_hash);
 }
 
+static void ptrace_exit(void) __attribute__((destructor));
+static void ptrace_exit(void)
+{
+	ohm_free(pid_hm);
+}
+
 static bool still_tracing(void)
 {
 	return ohm_iter_init(pid_hm).key != NULL;

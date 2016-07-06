@@ -156,7 +156,7 @@ static void tracer(pid_t pid)
 
 	/* Add the initial process to the pool. */
 	struct proc_t init = {0};
-	new_proc(&init);
+	proc_new(&init);
 	init.pid = pid;
 	if (!ohm_insert(pid_hm, &pid, sizeof(pid_t), &init, sizeof(struct proc_t)))
 		die("ohm_insert(init-%d) failed", pid);
@@ -262,7 +262,7 @@ static void tracer(pid_t pid)
 
 					/* TODO: Deal with threads. We'll have to fix up the usage of ohmic. */
 					struct proc_t new = {0};
-					clone_proc(&new, proc);
+					proc_clone(&new, proc);
 					new.pid = trace_child;
 
 					/* #yolo */

@@ -21,13 +21,14 @@
 #include "core/proc.h"
 #include "core/cred.h"
 
-void new_proc(struct proc_t *proc)
+void proc_new(struct proc_t *proc)
 {
-	new_cred(&proc->cred);
+	cred_new(&proc->cred);
 }
 
 /* Clones a proc_t, so it can be used for another process */
-void clone_proc(struct proc_t *new, struct proc_t *old)
+void proc_clone(struct proc_t *new, struct proc_t *old)
 {
-	clone_cred(&new->cred, &old->cred);
+	new->pid = old->pid;
+	cred_clone(&new->cred, &old->cred);
 }

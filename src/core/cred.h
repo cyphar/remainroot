@@ -41,14 +41,16 @@ struct cred_t {
 	int ngroups;
 	gid_t groups[NGROUPS_MAX];
 
-	/* TODO: ->securebits and ->*_set support. */
+	long securebits;
+
+	/* TODO: Capabilities support. */
 };
 
 /* Initiates a new cred_t with the current process context. */
-void new_cred(struct cred_t *cred);
+void cred_new(struct cred_t *cred);
 
 /* Clones a cred_t, so it can be used for another process */
-void clone_cred(struct cred_t *new, struct cred_t *old);
+void cred_clone(struct cred_t *new, struct cred_t *old);
 
 #endif /* !defined(REMAINROOT_CRED_H) */
 

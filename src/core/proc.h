@@ -29,9 +29,9 @@ struct proc_t {
 };
 
 /* Initiates a new proc_t with the current process context. */
-void new_proc(struct proc_t *proc);
+void proc_new(struct proc_t *proc);
 
 /* Clones a proc_t, so it can be used for another process */
-void clone_proc(struct proc_t *new, struct proc_t *old);
+void proc_clone(struct proc_t *new, struct proc_t *old);
 
 #endif /* !defined(CORE_PROC_H) */

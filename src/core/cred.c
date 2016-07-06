@@ -40,7 +40,9 @@
 #include <unistd.h>
 #include <limits.h>
 #include <sys/types.h>
+#include <sys/prctl.h>
 #include <syscall.h>
+#include <linux/securebits.h>
 
 /* Verify that we don't break the default prototypes. */
 #include "cred.h"
@@ -65,6 +67,82 @@
  * This section implements all of the uid-based credential shims. *
  ******************************************************************/
 
+/*
+ * A close reading of the capability code in the kernel reveals that only
+ * setuid-like syscalls will cause capabilities to be dropped. In that case,
+ * all capabilities are dropped. All of this is controlled by securebits.
+ */
+
+/*
+ * TODO: Implement securebits handling (might need to intercept prctl(PR_GET_SECUREBITS))
+ * TODO: Implement capabilities handling (hope this isn't necessary).
+ */
+
+#define issecure(current, x) ((1 << (x)) & (current)->securebits)
+
+/* Refers to the cred_t fixes required for different syscalls. */
+#define SETID_RE  0
+#define SETID_ID  1
+#define SETID_RES 2
+#define SETID_FS  3
+
+void cred_drop_cap(struct cred_t *cred)
+{
+	cred->cap_setuid = false;
+	cred->cap_setgid = false;
+}
+
+void cred_raise_cap(struct cred_t *cred)
+{
+	/* TODO: Implement the different capability sets. */
+}
+
+/* Emulates old GNU/Linux semantics, based on securebits. */
+void cred_emulate_setxuid(struct cred_t *new, struct cred_t *old)
+{
+	/*
+	 * We only have to drop all capabilities here if we went from having some
+	 * privilege to not having any privilege.
+	 */
+	if ((old->uid == 0 || old->euid == 0 || old->suid == 0) &&
+		(new->uid != 0 && new->euid != 0 && new->suid != 0)) {
+		if (!issecure(old, SECURE_KEEP_CAPS))
+			cred_drop_cap(new);
+	}
+
+	if (old->euid == 0 && old->euid != 0)
+		cred_drop_cap(new);
+	if (old->euid != 0 && old->euid == 0)
+		cred_raise_cap(new);
+}
+
+/* Fixes up credentials based on securebits. */
+int cred_fix_capabilities(struct cred_t *new, struct cred_t *old, int flags)
+{
+	switch (flags) {
+	case SETID_RE:
+	case SETID_ID:
+	case SETID_RES:
+		if (!issecure(old, SECURE_NO_SETUID_FIXUP))
+			cred_emulate_setxuid(new, old);
+		break;
+	case SETID_FS:
+		/* XXX: We don't support any of the capabilities changed here. */
+		if (!issecure(old, SECURE_NO_SETUID_FIXUP)) {
+			if (old->fsuid == 0 && new->fsuid != 0)
+				/*cred_drop_fscap(new)*/;
+			if (old->fsuid != 0 && new->fsuid == 0)
+				/*cred_raise_fscap(new)*/;
+		}
+		break;
+
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /* Shorten tedious code. */
 #define BSD_UID_ACCESS(current, var, check_suid) \
 	((var) == (uid_t) -1 || \
@@ -74,14 +152,19 @@
 
 int __rr_do_setuid(struct cred_t *current, uid_t uid)
 {
+	struct cred_t new;
+	cred_clone(&new, current);
+
 	if (current->cap_setuid)
-		current->uid = current->euid = current->suid = uid;
+		new.uid = new.euid = new.suid = uid;
 	else if (uid == current->uid || uid == current->suid)
-		current->euid = uid;
+		new.euid = uid;
 	else
 		goto error;
 
-	current->fsuid = current->euid;
+	new.fsuid = new.euid;
+	cred_fix_capabilities(&new, current, SETID_ID);
+	cred_clone(current, &new);
 	return 0;
 
 error:
@@ -96,12 +179,16 @@ uid_t __rr_do_getuid(struct cred_t *current)
 int __rr_do_setfsuid(struct cred_t *current, uid_t fsuid)
 {
 	uid_t old_fsuid = fsuid;
+	struct cred_t new;
+	cred_clone(&new, current);
 
 	if (!current->cap_setuid)
 		if (!BSD_UID_ACCESS(current, fsuid, true) && fsuid != current->fsuid)
 			goto error;
 
-	current->fsuid = fsuid;
+	new.fsuid = fsuid;
+	cred_fix_capabilities(&new, current, SETID_FS);
+	cred_clone(current, &new);
 	/* fallthrough */
 
 error:
@@ -110,7 +197,8 @@ error:
 
 int __rr_do_setreuid(struct cred_t *current, uid_t ruid, uid_t euid)
 {
-	uid_t old_uid = current->uid;
+	struct cred_t new;
+	cred_clone(&new, current);
 
 	if (!current->cap_setuid) {
 		if (!BSD_UID_ACCESS(current, ruid, false))
@@ -120,13 +208,15 @@ int __rr_do_setreuid(struct cred_t *current, uid_t ruid, uid_t euid)
 	}
 
 	if (ruid != (uid_t) -1)
-		current->uid = ruid;
+		new.uid = ruid;
 	if (euid != (uid_t) -1)
-		current->euid = euid;
-	if (ruid != (uid_t) -1 || (euid != (uid_t) -1 && euid != old_uid))
-		current->suid = current->euid;
+		new.euid = euid;
+	if (ruid != (uid_t) -1 || (euid != (uid_t) -1 && euid != current->uid))
+		new.suid = new.euid;
 
-	current->fsuid = current->euid;
+	new.fsuid = new.euid;
+	cred_fix_capabilities(&new, current, SETID_RE);
+	cred_clone(current, &new);
 	return 0;
 
 error:
@@ -137,6 +227,9 @@ error:
 
 int __rr_do_setresuid(struct cred_t *current, uid_t ruid, uid_t euid, uid_t suid)
 {
+	struct cred_t new;
+	cred_clone(&new, current);
+
 	if (!current->cap_setuid) {
 		if (!BSD_UID_ACCESS(current, ruid, true))
 			goto error;
@@ -147,13 +240,15 @@ int __rr_do_setresuid(struct cred_t *current, uid_t ruid, uid_t euid, uid_t suid
 	}
 
 	if (ruid != (uid_t) -1)
-		current->uid = ruid;
+		new.uid = ruid;
 	if (euid != (uid_t) -1)
-		current->euid = euid;
+		new.euid = euid;
 	if (suid != (uid_t) -1)
-		current->suid = suid;
+		new.suid = suid;
 
-	current->fsuid = current->euid;
+	new.fsuid = new.euid;
+	cred_fix_capabilities(&new, current, SETID_RES);
+	cred_clone(current, &new);
 	return 0;
 
 error:
@@ -202,14 +297,18 @@ uid_t __rr_do_geteuid(struct cred_t *current)
 
 int __rr_do_setgid(struct cred_t *current, gid_t gid)
 {
+	struct cred_t new;
+	cred_clone(&new, current);
+
 	if (current->cap_setgid)
-		current->gid = current->egid = current->sgid = gid;
+		new.gid = new.egid = new.sgid = gid;
 	else if (gid == current->gid || gid == current->sgid)
-		current->egid = gid;
+		new.egid = gid;
 	else
 		goto error;
 
 	current->fsgid = current->egid;
+	cred_clone(current, &new);
 	return 0;
 
 error:
@@ -224,12 +323,15 @@ gid_t __rr_do_getgid(struct cred_t *current)
 int __rr_do_setfsgid(struct cred_t *current, gid_t fsgid)
 {
 	gid_t old_fsgid = fsgid;
+	struct cred_t new;
+	cred_clone(&new, current);
 
 	if (!current->cap_setgid)
 		if (!BSD_GID_ACCESS(current, fsgid, true) && fsgid != current->fsgid)
 			goto error;
 
-	current->fsgid = fsgid;
+	new.fsgid = fsgid;
+	cred_clone(current, &new);
 	/* fallthrough */
 
 error:
@@ -238,7 +340,8 @@ error:
 
 int __rr_do_setregid(struct cred_t *current, gid_t rgid, gid_t egid)
 {
-	gid_t old_gid = current->gid;
+	struct cred_t new;
+	cred_clone(&new, current);
 
 	if (!current->cap_setgid) {
 		if (!BSD_GID_ACCESS(current, rgid, false))
@@ -248,13 +351,14 @@ int __rr_do_setregid(struct cred_t *current, gid_t rgid, gid_t egid)
 	}
 
 	if (rgid != (gid_t) -1)
-		current->gid = rgid;
+		new.gid = rgid;
 	if (egid != (gid_t) -1)
-		current->egid = egid;
-	if (rgid != (gid_t) -1 || (egid != (gid_t) -1 && egid != old_gid))
-		current->sgid = current->egid;
+		new.egid = egid;
+	if (rgid != (gid_t) -1 || (egid != (gid_t) -1 && egid != current->gid))
+		new.sgid = new.egid;
 
-	current->fsgid = current->egid;
+	new.fsgid = new.egid;
+	cred_clone(current, &new);
 	return 0;
 
 error:
@@ -265,6 +369,9 @@ error:
 
 int __rr_do_setresgid(struct cred_t *current, gid_t rgid, gid_t egid, gid_t sgid)
 {
+	struct cred_t new;
+	cred_clone(&new, current);
+
 	if (!current->cap_setgid) {
 		if (!BSD_GID_ACCESS(current, rgid, true))
 			goto error;
@@ -275,13 +382,14 @@ int __rr_do_setresgid(struct cred_t *current, gid_t rgid, gid_t egid, gid_t sgid
 	}
 
 	if (rgid != (gid_t) -1)
-		current->gid = rgid;
+		new.gid = rgid;
 	if (egid != (gid_t) -1)
-		current->egid = egid;
+		new.egid = egid;
 	if (sgid != (gid_t) -1)
-		current->sgid = sgid;
+		new.sgid = sgid;
 
-	current->fsgid = current->egid;
+	new.fsgid = new.egid;
+	cred_clone(current, &new);
 	return 0;
 
 error:
@@ -324,6 +432,9 @@ gid_t __rr_do_getegid(struct cred_t *current)
 
 int __rr_do_setgroups(struct cred_t *current, int size, const gid_t *list)
 {
+	struct cred_t new;
+	cred_clone(&new, current);
+
 	if (size <= 0 || size > NGROUPS_MAX)
 		goto error_value;
 
@@ -331,8 +442,9 @@ int __rr_do_setgroups(struct cred_t *current, int size, const gid_t *list)
 		goto error_perm;
 
 	for (int i = 0; i < size; i++)
-		current->groups[i] = list[i];
+		new.groups[i] = list[i];
 
+	cred_clone(current, &new);
 	return 0;
 
 error_value:
@@ -365,8 +477,11 @@ error:
 /* TODO: Actually get this from /proc/sys/kernel/overflowgid. */
 #define OVERFLOW_GID 65534
 
-void new_cred(struct cred_t *current)
+void cred_new(struct cred_t *current)
 {
+	/* Clear the structure. */
+	*current = (struct cred_t) {0};
+
 	/*
 	 * Set up defaults. Still need to make this use the current set of
 	 * priviliges.
@@ -382,6 +497,7 @@ void new_cred(struct cred_t *current)
 		.egid       = 0,
 		.sgid       = 0,
 		.fsgid      = 0,
+		.securebits = prctl(PR_GET_SECUREBITS),
 	};
 
 	/* Set up supplementary groups. */
@@ -399,7 +515,7 @@ void new_cred(struct cred_t *current)
 	}
 }
 
-void clone_cred(struct cred_t *new, struct cred_t *old)
+void cred_clone(struct cred_t *new, struct cred_t *old)
 {
 	*new = *old;
 }

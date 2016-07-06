@@ -26,19 +26,19 @@
 #if !defined(SYSCALL0)
 #define AUTO_SYSCALL
 #define SYSCALL0(type, func) \
-	type __rr_do_ ## func(void);
+	type __rr_do_ ## func(struct cred_t *current);
 #define SYSCALL1(type, func, type0, arg0) \
-	type __rr_do_ ## func(type0 arg0);
+	type __rr_do_ ## func(struct cred_t *current, type0 arg0);
 #define SYSCALL2(type, func, type0, arg0, type1, arg1) \
-	type __rr_do_ ## func(type0 arg0, type1 arg1);
+	type __rr_do_ ## func(struct cred_t *current, type0 arg0, type1 arg1);
 #define SYSCALL3(type, func, type0, arg0, type1, arg1, type2, arg2) \
-	type __rr_do_ ## func(type0 arg0, type1 arg1, type2 arg2);
+	type __rr_do_ ## func(struct cred_t *current, type0 arg0, type1 arg1, type2 arg2);
 #define SYSCALL4(type, func, type0, arg0, type1, arg1, type2, arg2, type3, arg3) \
-	type __rr_do_ ## func(type0 arg0, type1 arg1, type2 arg2, type3 arg3);
+	type __rr_do_ ## func(struct cred_t *current, type0 arg0, type1 arg1, type2 arg2, type3 arg3);
 #define SYSCALL5(type, func, type0, arg0, type1, arg1, type2, arg2, type3, arg3, type4, arg4) \
-	type __rr_do_ ## func(type0 arg0, type1 arg1, type2 arg2, type3 arg3, type4 arg4);
+	type __rr_do_ ## func(struct cred_t *current, type0 arg0, type1 arg1, type2 arg2, type3 arg3, type4 arg4);
 #define SYSCALL6(type, func, type0, arg0, type1, arg1, type2, arg2, type3, arg3, type4, arg4, type5, arg5) \
-	type __rr_do_ ## func(type0 arg0, type1 arg1, type2 arg2, type3 arg3, type4 arg4, type5 arg5);
+	type __rr_do_ ## func(struct cred_t *current, type0 arg0, type1 arg1, type2 arg2, type3 arg3, type4 arg4, type5 arg5);
 #endif /* !defined(SYSCALL0) */
 
 #if !defined(LIBCALL0)

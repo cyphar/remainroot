@@ -23,9 +23,10 @@
 
 #include <stdint.h>
 #include <sys/types.h>
+#include "core/proc.h"
 
 /* XXX: I think I'm overusing this hack. */
-#define SYSCALL(func) int ptrace_rr_ ## func(pid_t, uintptr_t *);
+#define SYSCALL(func) int ptrace_rr_ ## func(struct proc_t *, pid_t, uintptr_t *);
 #define SYSCALL0(type, func, ...) SYSCALL(func)
 #define SYSCALL1(type, func, ...) SYSCALL(func)
 #define SYSCALL2(type, func, ...) SYSCALL(func)

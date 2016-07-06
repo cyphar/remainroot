@@ -19,57 +19,58 @@
 /* generic-shims.c implements shims using the generic.h API. */
 
 #include <limits.h>
+#include "core/proc.h"
 #include "core/cred.h"
 #include "generic.h"
 #include "generic-shims.h"
 
 /* SYSCALL1(int, setuid, uid_t, uid) */
-int ptrace_rr_setuid(pid_t pid, uintptr_t *ret)
+int ptrace_rr_setuid(struct proc_t *current, pid_t pid, uintptr_t *ret)
 {
 	uid_t uid = ptrace_argument(pid, 0);
-	*ret = __rr_do_setuid(uid);
+	*ret = __rr_do_setuid(&current->cred, uid);
 	return 0;
 }
 
 /* SYSCALL0(uid_t, getuid) */
-int ptrace_rr_getuid(pid_t pid, uintptr_t *ret)
+int ptrace_rr_getuid(struct proc_t *current, pid_t pid, uintptr_t *ret)
 {
-	*ret = __rr_do_getuid();
+	*ret = __rr_do_getuid(&current->cred);
 	return 0;
 }
 
 /* SYSCALL1(int, setfsuid, uid_t, fsuid) */
-int ptrace_rr_setfsuid(pid_t pid, uintptr_t *ret)
+int ptrace_rr_setfsuid(struct proc_t *current, pid_t pid, uintptr_t *ret)
 {
 	uid_t fsuid = ptrace_argument(pid, 0);
-	*ret = __rr_do_setfsuid(fsuid);
+	*ret = __rr_do_setfsuid(&current->cred, fsuid);
 	return 0;
 }
 
 /* SYSCALL2(int, setreuid, uid_t, ruid, uid_t, euid) */
-int ptrace_rr_setreuid(pid_t pid, uintptr_t *ret)
+int ptrace_rr_setreuid(struct proc_t *current, pid_t pid, uintptr_t *ret)
 {
 	uid_t ruid = ptrace_argument(pid, 0);
 	uid_t euid = ptrace_argument(pid, 1);
-	*ret = __rr_do_setreuid(ruid, euid);
+	*ret = __rr_do_setreuid(&current->cred, ruid, euid);
 	return 0;
 }
 
 /* SYSCALL3(int, setresuid, uid_t, ruid, uid_t, euid, uid_t, suid) */
-int ptrace_rr_setresuid(pid_t pid, uintptr_t *ret)
+int ptrace_rr_setresuid(struct proc_t *current, pid_t pid, uintptr_t *ret)
 {
 	uid_t ruid = ptrace_argument(pid, 0);
 	uid_t euid = ptrace_argument(pid, 1);
 	uid_t suid = ptrace_argument(pid, 2);
-	*ret = __rr_do_setresuid(ruid, euid, suid);
+	*ret = __rr_do_setresuid(&current->cred, ruid, euid, suid);
 	return 0;
 }
 
 /* SYSCALL3(int, getresuid, uid_t *, ruid, uid_t *, euid, uid_t *, suid) */
-int ptrace_rr_getresuid(pid_t pid, uintptr_t *ret)
+int ptrace_rr_getresuid(struct proc_t *current, pid_t pid, uintptr_t *ret)
 {
 	uid_t ruid, euid, suid;
-	*ret = __rr_do_getresuid(&ruid, &euid, &suid);
+	*ret = __rr_do_getresuid(&current->cred, &ruid, &euid, &suid);
 
 	uintptr_t p_ruid = ptrace_argument(pid, 0);
 	uintptr_t p_euid = ptrace_argument(pid, 1);
@@ -82,59 +83,59 @@ int ptrace_rr_getresuid(pid_t pid, uintptr_t *ret)
 }
 
 /* SYSCALL0(uid_t, geteuid) */
-int ptrace_rr_geteuid(pid_t pid, uintptr_t *ret)
+int ptrace_rr_geteuid(struct proc_t *current, pid_t pid, uintptr_t *ret)
 {
-	*ret = __rr_do_geteuid();
+	*ret = __rr_do_geteuid(&current->cred);
 	return 0;
 }
 
 /* SYSCALL1(int, setgid, gid_t, gid) */
-int ptrace_rr_setgid(pid_t pid, uintptr_t *ret)
+int ptrace_rr_setgid(struct proc_t *current, pid_t pid, uintptr_t *ret)
 {
 	gid_t gid = ptrace_argument(pid, 0);
-	*ret = __rr_do_setgid(gid);
+	*ret = __rr_do_setgid(&current->cred, gid);
 	return 0;
 }
 
 /* SYSCALL0(gid_t, getgid) */
-int ptrace_rr_getgid(pid_t pid, uintptr_t *ret)
+int ptrace_rr_getgid(struct proc_t *current, pid_t pid, uintptr_t *ret)
 {
-	*ret = __rr_do_getgid();
+	*ret = __rr_do_getgid(&current->cred);
 	return 0;
 }
 
 /* SYSCALL1(int, setfsgid, gid_t, fsgid) */
-int ptrace_rr_setfsgid(pid_t pid, uintptr_t *ret)
+int ptrace_rr_setfsgid(struct proc_t *current, pid_t pid, uintptr_t *ret)
 {
 	gid_t fsgid = ptrace_argument(pid, 0);
-	*ret = __rr_do_setfsgid(fsgid);
+	*ret = __rr_do_setfsgid(&current->cred, fsgid);
 	return 0;
 }
 
 /* SYSCALL2(int, setregid, gid_t, rgid, gid_t, egid) */
-int ptrace_rr_setregid(pid_t pid, uintptr_t *ret)
+int ptrace_rr_setregid(struct proc_t *current, pid_t pid, uintptr_t *ret)
 {
 	gid_t rgid = ptrace_argument(pid, 0);
 	gid_t egid = ptrace_argument(pid, 1);
-	*ret = __rr_do_setregid(rgid, egid);
+	*ret = __rr_do_setregid(&current->cred, rgid, egid);
 	return 0;
 }
 
 /* SYSCALL3(int, setresgid, gid_t, rgid, gid_t, egid, gid_t, sgid) */
-int ptrace_rr_setresgid(pid_t pid, uintptr_t *ret)
+int ptrace_rr_setresgid(struct proc_t *current, pid_t pid, uintptr_t *ret)
 {
 	gid_t rgid = ptrace_argument(pid, 0);
 	gid_t egid = ptrace_argument(pid, 1);
 	gid_t sgid = ptrace_argument(pid, 2);
-	*ret = __rr_do_setresgid(rgid, egid, sgid);
+	*ret = __rr_do_setresgid(&current->cred, rgid, egid, sgid);
 	return 0;
 }
 
 /* SYSCALL3(int, getresgid, gid_t *, rgid, gid_t *, egid, gid_t *, sgid) */
-int ptrace_rr_getresgid(pid_t pid, uintptr_t *ret)
+int ptrace_rr_getresgid(struct proc_t *current, pid_t pid, uintptr_t *ret)
 {
 	gid_t rgid, egid, sgid;
-	*ret = __rr_do_getresgid(&rgid, &egid, &sgid);
+	*ret = __rr_do_getresgid(&current->cred, &rgid, &egid, &sgid);
 
 	uintptr_t p_rgid = ptrace_argument(pid, 0);
 	uintptr_t p_egid = ptrace_argument(pid, 1);
@@ -147,14 +148,14 @@ int ptrace_rr_getresgid(pid_t pid, uintptr_t *ret)
 }
 
 /* SYSCALL0(gid_t, getegid) */
-int ptrace_rr_getegid(pid_t pid, uintptr_t *ret)
+int ptrace_rr_getegid(struct proc_t *current, pid_t pid, uintptr_t *ret)
 {
-	*ret = __rr_do_getegid();
+	*ret = __rr_do_getegid(&current->cred);
 	return 0;
 }
 
 /* SYSCALL2(int, setgroups, int, size, const gid_t *, list) */
-int ptrace_rr_setgroups(pid_t pid, uintptr_t *ret)
+int ptrace_rr_setgroups(struct proc_t *current, pid_t pid, uintptr_t *ret)
 {
 	int size = ptrace_argument(pid, 0);
 	uintptr_t head = ptrace_argument(pid, 1);
@@ -163,18 +164,18 @@ int ptrace_rr_setgroups(pid_t pid, uintptr_t *ret)
 	for (int i = 0; i < size; i++)
 		list[i] = ptrace_deref_data(pid, (uintptr_t) ((gid_t *) head) + i);
 
-	*ret = __rr_do_setgroups(size, list);
+	*ret = __rr_do_setgroups(&current->cred, size, list);
 	return 0;
 }
 
 /* SYSCALL2(int, getgroups, int, size, gid_t *, list) */
-int ptrace_rr_getgroups(pid_t pid, uintptr_t *ret)
+int ptrace_rr_getgroups(struct proc_t *current, pid_t pid, uintptr_t *ret)
 {
 	int size = ptrace_argument(pid, 0);
 	uintptr_t head = ptrace_argument(pid, 1);
 	gid_t list[NGROUPS_MAX] = {0};
 
-	*ret = __rr_do_getgroups(size, list);
+	*ret = __rr_do_getgroups(&current->cred, size, list);
 	for (int i = 0; i < size; i++)
 		ptrace_assign_data(pid, (uintptr_t) ((gid_t *) head) + i, list[i]);
 

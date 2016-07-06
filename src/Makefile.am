@@ -16,8 +16,8 @@
 
 # remainroot
 bin_PROGRAMS = remainroot
-remainroot_SOURCES = remainroot.c core/cred.c
-noinst_HEADERS = common.h info.h shims.h core/cred.h core/syscalls-def.h core/syscalls-undef.h
+remainroot_SOURCES = remainroot.c core/cred.c core/proc.c
+noinst_HEADERS = common.h info.h shims.h core/cred.h core/proc.h core/syscalls-def.h core/syscalls-undef.h
 
 # ptrace shim
 remainroot_SOURCES += ptrace.c ptrace/generic-shims.c ptrace/amd64.c ohmic/ohmic.c

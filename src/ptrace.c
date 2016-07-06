@@ -35,15 +35,14 @@
 #include "ptrace/generic.h"
 #include "ptrace/generic-shims.h"
 #include "ohmic/ohmic.h"
-
-static struct ohm_t *pid_hm;
+#include "core/proc.h"
 
 /*
- * TODO: Replace this with process context. Due to bad design on my part, ohmic
- *       doesn't allow you to have NULL values so this is just a placeholder
- *       until I implement all of the state variable crap.
+ * A mapping from pid -> proc_t. Threads share the same context, but there
+ * shouldn't be any concurrency issues because our use of ptrace is
+ * single-threaded.
  */
-static char nothing = '*';
+static struct ohm_t *pid_hm;
 
 static void ptrace_init(void) __attribute__((constructor));
 static void ptrace_init(void)
@@ -156,7 +155,10 @@ static void tracer(pid_t pid)
 		die("ptrace(setoptions) failed: %m");
 
 	/* Add the initial process to the pool. */
-	if (!ohm_insert(pid_hm, &pid, sizeof(pid_t), &nothing, sizeof(nothing)))
+	struct proc_t init = {0};
+	new_proc(&init);
+	init.pid = pid;
+	if (!ohm_insert(pid_hm, &pid, sizeof(pid_t), &init, sizeof(struct proc_t)))
 		die("ohm_insert(init-%d) failed", pid);
 
 	/*
@@ -166,10 +168,18 @@ static void tracer(pid_t pid)
 	 */
 	while (still_tracing()) {
 		int status;
+		struct proc_t *proc;
 
 		/* --> syscall() */
 		if (trace_syscall(&pid, &status))
 			break;
+
+		/* Get the proc_t for the pid. */
+		proc = ohm_search(pid_hm, &pid, sizeof(pid_t));
+		if (!proc)
+			die("ohm_search(%d) failed on traced pid", pid);
+		if (proc->pid != pid)
+			die("pid_hm corrupted -- ohm_search(%d).pid = %d\n", pid, proc->pid);
 
 		long number = ptrace_syscall(pid);
 		if (number < 0)
@@ -189,7 +199,7 @@ static void tracer(pid_t pid)
 		switch (number) {
 #define SYSCALL(func) \
 			case SYS_ ## func: \
-				if (ptrace_rr_ ## func(pid, &ret) < 0) \
+				if (ptrace_rr_ ## func(proc, pid, &ret) < 0) \
 					die("ptrace_syscall_%s failed: %m\n", "" # func); \
 				break;
 #define SYSCALL0(type, func, ...) SYSCALL(func)
@@ -232,6 +242,13 @@ static void tracer(pid_t pid)
 			die("trace_syscall failed: process died inside syscall\n");
 		}
 
+		/* Get the proc_t for the pid. */
+		proc = ohm_search(pid_hm, &pid, sizeof(pid_t));
+		if (!proc)
+			die("ohm_search(%d) failed on traced pid", pid);
+		if (proc->pid != pid)
+			die("pid_hm corrupted -- ohm_search(%d).pid = %d\n", pid, proc->pid);
+
 		/* See if we just hit a clone. */
 		switch ((status >> 8) & ~SIGTRAP) {
 			case PTRACE_EVENT_CLONE << 8:
@@ -243,8 +260,13 @@ static void tracer(pid_t pid)
 					if (ptrace(PTRACE_GETEVENTMSG, pid, NULL, &trace_child) < 0)
 						die("ptrace(getevntmsg): %m");
 
+					/* TODO: Deal with threads. We'll have to fix up the usage of ohmic. */
+					struct proc_t new = {0};
+					clone_proc(&new, proc);
+					new.pid = trace_child;
+
 					/* #yolo */
-					if (!ohm_insert(pid_hm, &trace_child, sizeof(pid_t), &nothing, sizeof(nothing)))
+					if (!ohm_insert(pid_hm, &trace_child, sizeof(pid_t), &new, sizeof(struct proc_t)))
 						die("ohm_insert(child-%d) failed", trace_child);
 				}
 		}

@@ -66,73 +66,67 @@
  ******************************************************************/
 
 /* Shorten tedious code. */
-#define BSD_UID_ACCESS(var, suid) \
+#define BSD_UID_ACCESS(current, var, check_suid) \
 	((var) == (uid_t) -1 || \
-	 (var) == current_uid || \
-	 (var) == current_euid || \
-	 ((suid) && (var) == current_suid))
+	 (var) == (current)->uid || \
+	 (var) == (current)->euid || \
+	 ((check_suid) && (var) == (current)->suid))
 
-static bool current_cap_setuid = true;
-static uid_t current_uid = 0;
-static uid_t current_euid = 0;
-static uid_t current_suid = 0;
-static uid_t current_fsuid = 0;
-
-int __rr_do_setuid(uid_t uid)
+int __rr_do_setuid(struct cred_t *current, uid_t uid)
 {
-	if (current_cap_setuid)
-		current_uid = current_euid = current_suid = uid;
-	else if (uid == current_uid || uid == current_suid)
-		current_euid = uid;
+	if (current->cap_setuid)
+		current->uid = current->euid = current->suid = uid;
+	else if (uid == current->uid || uid == current->suid)
+		current->euid = uid;
 	else
 		goto error;
 
-	current_fsuid = current_euid;
+	current->fsuid = current->euid;
 	return 0;
 
 error:
 	return -EPERM;
 }
 
-uid_t __rr_do_getuid(void)
+uid_t __rr_do_getuid(struct cred_t *current)
 {
-	return current_uid;
+	return current->uid;
 }
 
-int __rr_do_setfsuid(uid_t fsuid)
+int __rr_do_setfsuid(struct cred_t *current, uid_t fsuid)
 {
 	uid_t old_fsuid = fsuid;
 
-	if (!current_cap_setuid)
-		if (!BSD_UID_ACCESS(fsuid, true) && fsuid != current_fsuid)
+	if (!current->cap_setuid)
+		if (!BSD_UID_ACCESS(current, fsuid, true) && fsuid != current->fsuid)
 			goto error;
 
-	current_fsuid = fsuid;
+	current->fsuid = fsuid;
 	/* fallthrough */
 
 error:
 	return old_fsuid;
 }
 
-int __rr_do_setreuid(uid_t ruid, uid_t euid)
+int __rr_do_setreuid(struct cred_t *current, uid_t ruid, uid_t euid)
 {
-	uid_t old_uid = current_uid;
+	uid_t old_uid = current->uid;
 
-	if (!current_cap_setuid) {
-		if (!BSD_UID_ACCESS(ruid, false))
+	if (!current->cap_setuid) {
+		if (!BSD_UID_ACCESS(current, ruid, false))
 			goto error;
-		if (!BSD_UID_ACCESS(euid, true))
+		if (!BSD_UID_ACCESS(current, euid, true))
 			goto error;
 	}
 
 	if (ruid != (uid_t) -1)
-		current_uid = ruid;
+		current->uid = ruid;
 	if (euid != (uid_t) -1)
-		current_euid = euid;
+		current->euid = euid;
 	if (ruid != (uid_t) -1 || (euid != (uid_t) -1 && euid != old_uid))
-		current_suid = current_euid;
+		current->suid = current->euid;
 
-	current_fsuid = current_euid;
+	current->fsuid = current->euid;
 	return 0;
 
 error:
@@ -141,40 +135,36 @@ error:
 
 /* There is no getreuid(2). */
 
-int __rr_do_setresuid(uid_t ruid, uid_t euid, uid_t suid)
+int __rr_do_setresuid(struct cred_t *current, uid_t ruid, uid_t euid, uid_t suid)
 {
-	if (!current_cap_setuid) {
-		if (!BSD_UID_ACCESS(ruid, true))
+	if (!current->cap_setuid) {
+		if (!BSD_UID_ACCESS(current, ruid, true))
 			goto error;
-		if (!BSD_UID_ACCESS(euid, true))
+		if (!BSD_UID_ACCESS(current, euid, true))
 			goto error;
-		if (!BSD_UID_ACCESS(suid, true))
+		if (!BSD_UID_ACCESS(current, suid, true))
 			goto error;
 	}
 
 	if (ruid != (uid_t) -1)
-		current_uid = ruid;
+		current->uid = ruid;
 	if (euid != (uid_t) -1)
-		current_euid = euid;
+		current->euid = euid;
 	if (suid != (uid_t) -1)
-		current_suid = suid;
+		current->suid = suid;
 
-	current_fsuid = current_euid;
+	current->fsuid = current->euid;
 	return 0;
 
 error:
 	return -EPERM;
 }
 
-int __rr_do_getresuid(uid_t *ruid, uid_t *euid, uid_t *suid)
+int __rr_do_getresuid(struct cred_t *current, uid_t *ruid, uid_t *euid, uid_t *suid)
 {
-	/* This is so we can get EFAULT without segfaulting. */
-	if (getresuid(ruid, euid, suid) < 0)
-		return -errno;
-
-	*ruid = current_uid;
-	*euid = current_euid;
-	*suid = current_suid;
+	*ruid = current->uid;
+	*euid = current->euid;
+	*suid = current->suid;
 	return 0;
 }
 
@@ -183,20 +173,20 @@ int __rr_do_getresuid(uid_t *ruid, uid_t *euid, uid_t *suid)
  * using setreuid and getresuid.
  */
 
-int __rr_do_seteuid(uid_t euid)
+int __rr_do_seteuid(struct cred_t *current, uid_t euid)
 {
 	if (euid == (uid_t) -1)
 		goto error;
 
-	return __rr_do_setreuid(-1, euid);
+	return __rr_do_setreuid(current, -1, euid);
 
 error:
 	return -EPERM;
 }
 
-uid_t __rr_do_geteuid(void)
+uid_t __rr_do_geteuid(struct cred_t *current)
 {
-	return current_euid;
+	return current->euid;
 }
 
 /******************************************************************
@@ -204,73 +194,67 @@ uid_t __rr_do_geteuid(void)
  ******************************************************************/
 
 /* Shorten tedious code. */
-#define BSD_GID_ACCESS(var, sgid) \
+#define BSD_GID_ACCESS(current, var, check_sgid) \
 	((var) == (gid_t) -1 || \
-	 (var) == current_gid || \
-	 (var) == current_egid || \
-	 ((sgid) && (var) == current_sgid))
+	 (var) == (current)->gid || \
+	 (var) == (current)->egid || \
+	 ((check_sgid) && (var) == (current)->sgid))
 
-static bool current_cap_setgid = true;
-static gid_t current_gid = 0;
-static gid_t current_egid = 0;
-static gid_t current_sgid = 0;
-static gid_t current_fsgid = 0;
-
-int __rr_do_setgid(gid_t gid)
+int __rr_do_setgid(struct cred_t *current, gid_t gid)
 {
-	if (current_cap_setgid)
-		current_gid = current_egid = current_sgid = gid;
-	else if (gid == current_gid || gid == current_sgid)
-		current_egid = gid;
+	if (current->cap_setgid)
+		current->gid = current->egid = current->sgid = gid;
+	else if (gid == current->gid || gid == current->sgid)
+		current->egid = gid;
 	else
 		goto error;
 
-	current_fsgid = current_egid;
+	current->fsgid = current->egid;
 	return 0;
 
 error:
 	return -EPERM;
 }
 
-gid_t __rr_do_getgid(void)
+gid_t __rr_do_getgid(struct cred_t *current)
 {
-	return current_gid;
+	return current->gid;
 }
 
-int __rr_do_setfsgid(gid_t fsgid)
+int __rr_do_setfsgid(struct cred_t *current, gid_t fsgid)
 {
 	gid_t old_fsgid = fsgid;
 
-	if (!current_cap_setgid)
-		if (!BSD_GID_ACCESS(fsgid, true) && fsgid != current_fsgid)
+	if (!current->cap_setgid)
+		if (!BSD_GID_ACCESS(current, fsgid, true) && fsgid != current->fsgid)
 			goto error;
 
-	current_fsgid = fsgid;
+	current->fsgid = fsgid;
 	/* fallthrough */
 
 error:
 	return old_fsgid;
 }
 
-int __rr_do_setregid(gid_t rgid, gid_t egid)
+int __rr_do_setregid(struct cred_t *current, gid_t rgid, gid_t egid)
 {
-	gid_t old_gid = current_gid;
+	gid_t old_gid = current->gid;
 
-	if (!current_cap_setgid) {
-		if (!BSD_GID_ACCESS(rgid, false))
+	if (!current->cap_setgid) {
+		if (!BSD_GID_ACCESS(current, rgid, false))
 			goto error;
-		if (!BSD_GID_ACCESS(egid, true))
+		if (!BSD_GID_ACCESS(current, egid, true))
 			goto error;
 	}
 
 	if (rgid != (gid_t) -1)
-		current_gid = rgid;
+		current->gid = rgid;
 	if (egid != (gid_t) -1)
-		current_egid = egid;
+		current->egid = egid;
 	if (rgid != (gid_t) -1 || (egid != (gid_t) -1 && egid != old_gid))
-		current_sgid = current_egid;
+		current->sgid = current->egid;
 
-	current_fsgid = current_egid;
+	current->fsgid = current->egid;
 	return 0;
 
 error:
@@ -279,40 +263,36 @@ error:
 
 /* There is no getregid(2). */
 
-int __rr_do_setresgid(gid_t rgid, gid_t egid, gid_t sgid)
+int __rr_do_setresgid(struct cred_t *current, gid_t rgid, gid_t egid, gid_t sgid)
 {
-	if (!current_cap_setgid) {
-		if (!BSD_GID_ACCESS(rgid, true))
+	if (!current->cap_setgid) {
+		if (!BSD_GID_ACCESS(current, rgid, true))
 			goto error;
-		if (!BSD_GID_ACCESS(egid, true))
+		if (!BSD_GID_ACCESS(current, egid, true))
 			goto error;
-		if (!BSD_GID_ACCESS(sgid, true))
+		if (!BSD_GID_ACCESS(current, sgid, true))
 			goto error;
 	}
 
 	if (rgid != (gid_t) -1)
-		current_gid = rgid;
+		current->gid = rgid;
 	if (egid != (gid_t) -1)
-		current_egid = egid;
+		current->egid = egid;
 	if (sgid != (gid_t) -1)
-		current_sgid = sgid;
+		current->sgid = sgid;
 
-	current_fsgid = current_egid;
+	current->fsgid = current->egid;
 	return 0;
 
 error:
 	return -EPERM;
 }
 
-int __rr_do_getresgid(gid_t *rgid, gid_t *egid, gid_t *sgid)
+int __rr_do_getresgid(struct cred_t *current, gid_t *rgid, gid_t *egid, gid_t *sgid)
 {
-	/* This is so we can get EFAULT without segfaulting. */
-	if (getresgid(rgid, egid, sgid) < 0)
-		return -errno;
-
-	*rgid = current_gid;
-	*egid = current_egid;
-	*sgid = current_sgid;
+	*rgid = current->gid;
+	*egid = current->egid;
+	*sgid = current->sgid;
 	return 0;
 }
 
@@ -321,20 +301,20 @@ int __rr_do_getresgid(gid_t *rgid, gid_t *egid, gid_t *sgid)
  * using setregid and getresgid.
  */
 
-int __rr_do_setegid(gid_t egid)
+int __rr_do_setegid(struct cred_t *current, gid_t egid)
 {
 	if (egid == (gid_t) -1)
 		goto error;
 
-	return __rr_do_setregid(-1, egid);
+	return __rr_do_setregid(current, -1, egid);
 
 error:
 	return -EPERM;
 }
 
-gid_t __rr_do_getegid(void)
+gid_t __rr_do_getegid(struct cred_t *current)
 {
-	return current_egid;
+	return current->egid;
 }
 
 /*
@@ -342,25 +322,16 @@ gid_t __rr_do_getegid(void)
  * version rootless container.
  */
 
-/*
- * TODO: We need to initialise this with a filtered version of
- *       getgroups(2). Filtering essentially means that we remove every
- *       overflow uid and gid.
- */
-
-static int current_ngids = 0;
-static gid_t current_gids[NGROUPS_MAX] = {0};
-
-int __rr_do_setgroups(int size, const gid_t *list)
+int __rr_do_setgroups(struct cred_t *current, int size, const gid_t *list)
 {
 	if (size <= 0 || size > NGROUPS_MAX)
 		goto error_value;
 
-	if (!current_cap_setgid)
+	if (!current->cap_setgid)
 		goto error_perm;
 
 	for (int i = 0; i < size; i++)
-		current_gids[i] = list[i];
+		current->groups[i] = list[i];
 
 	return 0;
 
@@ -371,21 +342,21 @@ error_perm:
 	return -EPERM;
 }
 
-int __rr_do_getgroups(int size, gid_t *list)
+int __rr_do_getgroups(struct cred_t *current, int size, gid_t *list)
 {
 	if (size == 0)
 		goto exit;
 
-	if (size < current_ngids || size > NGROUPS_MAX)
+	if (size < current->ngroups || size > NGROUPS_MAX)
 		goto error;
 
-	for (int i = 0; i < current_ngids; i++)
-		list[i] = current_gids[i];
+	for (int i = 0; i < current->ngroups; i++)
+		list[i] = current->groups[i];
 
 	/* fallthrough */
 
 exit:
-	return current_ngids;
+	return current->ngroups;
 
 error:
 	return -EINVAL;
@@ -394,20 +365,41 @@ error:
 /* TODO: Actually get this from /proc/sys/kernel/overflowgid. */
 #define OVERFLOW_GID 65534
 
-/* This sets up current_gids. */
-void __rr_init_cred(void) __attribute__((constructor));
-void __rr_init_cred(void)
+void new_cred(struct cred_t *current)
 {
-	gid_t gids[NGROUPS_MAX] = {0};
-	current_ngids = 0;
+	/*
+	 * Set up defaults. Still need to make this use the current set of
+	 * priviliges.
+	 */
+	*current = (struct cred_t) {
+		.cap_setuid = true,
+		.uid        = 0,
+		.euid       = 0,
+		.suid       = 0,
+		.fsuid      = 0,
+		.cap_setgid = true,
+		.gid        = 0,
+		.egid       = 0,
+		.sgid       = 0,
+		.fsgid      = 0,
+	};
+
+	/* Set up supplementary groups. */
+	gid_t groups[NGROUPS_MAX] = {0};
+	current->ngroups = 0;
 
 	/* If this fails, we can't do anything about it. */
-	int len = syscall(SYS_getgroups, NGROUPS_MAX, gids);
+	int len = syscall(SYS_getgroups, NGROUPS_MAX, groups);
 	if (len < 0)
 		return;
 
 	for (int i = 0; i < len; i++) {
-		if (gids[i] != OVERFLOW_GID)
-			current_gids[current_ngids++] = gids[i];
+		if (groups[i] != OVERFLOW_GID)
+			current->groups[current->ngroups++] = groups[i];
 	}
+}
+
+void clone_cred(struct cred_t *new, struct cred_t *old)
+{
+	*new = *old;
 }

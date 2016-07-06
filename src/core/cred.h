@@ -18,10 +18,41 @@
 
 #if !defined(REMAINROOT_CRED_H) || defined(SYSCALL0) || defined(LIBCALL0)
 #include <sys/types.h>
+#include <stdbool.h>
+#include <limits.h>
 
 #if !defined(REMAINROOT_CRED_H)
-#	define REMAINROOT_CRED_H
+#define REMAINROOT_CRED_H
+
+/* This effectively mirrors the cred structure in the Linux kernel. */
+struct cred_t {
+	bool cap_setuid;
+	uid_t uid,
+		  euid,
+		  suid,
+		  fsuid;
+
+	bool cap_setgid;
+	gid_t gid,
+		  egid,
+		  sgid,
+		  fsgid;
+
+	int ngroups;
+	gid_t groups[NGROUPS_MAX];
+
+	/* TODO: ->securebits and ->*_set support. */
+};
+
+/* Initiates a new cred_t with the current process context. */
+void new_cred(struct cred_t *cred);
+
+/* Clones a cred_t, so it can be used for another process */
+void clone_cred(struct cred_t *new, struct cred_t *old);
+
 #endif /* !defined(REMAINROOT_CRED_H) */
+
+/* TODO: Separate all of this into a separate header. */
 
 /* SYSCALL and LIBCALL definitions. */
 #include "syscalls-def.h"

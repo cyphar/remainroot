@@ -18,6 +18,13 @@ that will confuse some processes by providing seemingly garbage results.
 `remainroot` is designed to shim out all of these calls so that an
 unmodified process can run perfectly fine inside a rootless container.
 
+In the past, `remainroot` gave users a choice between using an `LD_PRELOAD`
+library (which would shim out `glibc` library calls and had effectively no
+performance impact) and a `ptrace(2)`-style shim (which would work with any
+GNU/Linux binary but had a massive performance impact). Due to a very large
+number of bugs and design issues in `LD_PRELOAD` (when it comes to
+`fork(2)`ing), `remainroot` only supports the `ptrace(2)` shim.
+
 ### `ptrace(2)` ###
 
 `ptrace(2)` is a debugging interface inside the Linux kernel, and is
@@ -65,14 +72,3 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with remainroot.  If not, see <http://www.gnu.org/licenses/>.
 ```
-
-My view on the licensing of the shared library used by `LD_PRELOAD` is
-that using a debugging facility that your program does not directly
-depend on (doesn't actually dynamically link to) is the "standard use"
-of this particular library (that's what it was designed to do after
-all). However, **this is not a binding agreement** and **should not be
-interpreted to be any additional permissions to the above license**.
-`remainroot` is licensed under the **verbatim** license text as
-referenced above, with no additional permissions or exceptions. Please
-consult with a lawyer or email me for clarification or permission before
-deciding to potentially infringe on the license.
